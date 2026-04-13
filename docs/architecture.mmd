@@ -1,0 +1,35 @@
+graph LR
+    subgraph TS["TRAINERSOURCE (trainersource.com)"]
+        direction TB
+        TS_PUB["Public Landing Page\nProgramme info, Apply button"]
+        TS_APP["Trainer Application\nName, location, niche, social media"]
+        TS_ONB["Onboarding\nVideos + quiz"]
+        TS_DSH["Trainer Dashboard\nCodes, clients, commissions"]
+        TS_ADM["Admin Panel\nAll data, region filter"]
+        TS_PAY["Commission Payouts\nBatch payouts via Wise"]
+    end
+
+    subgraph UP["ULTIMATE PEPTIDES (ultimate-peptides.com)"]
+        direction TB
+        UP_GATE["Access Code Gate\nEnter code to enter store"]
+        UP_STORE["Product Catalog\n12 peptides, COAs, research"]
+        UP_CHECK["ACH Checkout\nPaychron"]
+        UP_SHIP["Shipping\nShipStation"]
+    end
+
+    subgraph SERVICES["EXTERNAL SERVICES"]
+        SB["Supabase\nDatabase + Auth"]
+        WS["Wise\nBatch Payouts"]
+        BC["BigCommerce\nWebhooks"]
+        VR["Vercel\nHosting"]
+    end
+
+    TS_DSH -->|"One-time codes"| UP_GATE
+    UP_STORE -->|"Sale + attribution"| TS_PAY
+    TS --> SB
+    TS --> VR
+    TS_PAY --> WS
+    UP --> BC
+
+    style TS fill:#dae8fc,stroke:#6c8ebf
+    style UP fill:#d5e8d4,stroke:#82b366

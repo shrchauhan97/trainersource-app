@@ -1,0 +1,96 @@
+erDiagram
+    admins {
+        id uuid PK
+        email string UK
+        name string
+        role enum "superadmin|admin"
+        created_at timestamp
+    }
+
+    trainers {
+        id uuid PK
+        name string
+        email string UK
+        phone string
+        country string
+        city string
+        niche string
+        social_media string "IG/TikTok/etc from application"
+        tier enum "trainer|lead|network_partner"
+        status enum "applied|onboarding|active|suspended"
+        commission_rate decimal
+        wise_account string "payout destination"
+        onboarding_completed_at timestamp "null until quiz passed"
+        created_at timestamp
+    }
+
+    access_codes {
+        id uuid PK
+        code string UK
+        type enum "trainer|founder|organic"
+        trainer_id uuid FK "null if founder/organic"
+        status enum "active|consumed|expired"
+        created_at timestamp
+        expires_at timestamp "7 days from created_at"
+        consumed_by uuid FK "customer who used it"
+        consumed_at timestamp
+    }
+
+    customers {
+        id uuid PK
+        bigcommerce_customer_id string UK "links to BC account"
+        email string UK
+        name string
+        phone string
+        country string
+        city string
+        trainer_id uuid FK "attributed trainer"
+        access_code_id uuid FK "code they used"
+        created_at timestamp
+    }
+
+    orders {
+        id uuid PK
+        bigcommerce_order_id string UK "links to BC order"
+        customer_id uuid FK
+        trainer_id uuid FK "from customer attribution"
+        total decimal
+        status enum "pending|paid|shipped|delivered"
+        payment_method string "ACH via Paychron"
+        shipstation_id string
+        country string
+        city string
+        placed_at timestamp
+        updated_at timestamp "tracks status changes"
+    }
+
+    payouts {
+        id uuid PK
+        trainer_id uuid FK
+        total decimal
+        wise_transfer_id string "Wise reference"
+        status enum "pending|sent|confirmed"
+        period_start date
+        period_end date
+        created_at timestamp
+    }
+
+    commissions {
+        id uuid PK
+        trainer_id uuid FK
+        order_id uuid FK
+        payout_id uuid FK "null until batched into a payout"
+        rate_snapshot decimal "% at time of order"
+        amount decimal
+        status enum "pending|approved|paid"
+        created_at timestamp
+    }
+
+    trainers ||--o{ access_codes : "generates"
+    trainers ||--o{ customers : "attributed"
+    trainers ||--o{ commissions : "earns"
+    trainers ||--o{ payouts : "receives"
+    customers ||--o{ orders : "places"
+    orders ||--o{ commissions : "generates"
+    access_codes ||--o| customers : "consumed by"
+    payouts ||--o{ commissions : "groups"
