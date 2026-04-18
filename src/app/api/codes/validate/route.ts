@@ -5,7 +5,13 @@ import {
 } from '@/lib/bigcommerce';
 import type { AccessCode, Customer } from '@/lib/types';
 
-const allowedOrigin = 'https://ultimate-peptides.com';
+const allowedOrigins = new Set(
+  (process.env.ACCESS_GATE_ALLOWED_ORIGINS ?? 'https://ultimate-peptides.com')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const fallbackOrigin = 'https://ultimate-peptides.com';
 
 type ValidateCodeBody = {
   code?: string;
@@ -60,10 +66,11 @@ async function ensureBigCommerceCustomer(params: {
 }
 
 function corsHeaders(origin: string | null) {
-  const responseOrigin = origin === allowedOrigin ? allowedOrigin : allowedOrigin;
+  const responseOrigin = origin && allowedOrigins.has(origin) ? origin : fallbackOrigin;
 
   return {
     'Access-Control-Allow-Origin': responseOrigin,
+    'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   };
@@ -100,6 +107,33 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
 
+    const { data: accessCode, error: accessCodeError } = await supabase
+      .from('access_codes')
+      .select('*')
+      .eq('code', code)
+      .maybeSingle<AccessCode>();
+
+    if (accessCodeError) {
+      throw accessCodeError;
+    }
+
+    if (!accessCode) {
+      return json({ valid: false, reason: 'not_found' }, 200, origin);
+    }
+
+    const now = new Date();
+
+    if (accessCode.status === 'consumed') {
+      return json({ valid: false, reason: 'consumed' }, 200, origin);
+    }
+
+    if (accessCode.status !== 'active' || new Date(accessCode.expires_at) <= now) {
+      return json({ valid: false, reason: 'expired' }, 200, origin);
+    }
+
+    // Returning customer: same email, reuse row. The code is still required and
+    // must still be a valid unconsumed code — this branch only avoids duplicate
+    // customer rows and is NOT a gate bypass.
     const { data: existingCustomer, error: existingCustomerError } = await supabase
       .from('customers')
       .select('id, bigcommerce_customer_id')
@@ -110,7 +144,29 @@ export async function POST(request: Request) {
       throw existingCustomerError;
     }
 
+    const consumedAt = now.toISOString();
+
     if (existingCustomer) {
+      const { data: consumedRow, error: consumeError } = await supabase
+        .from('access_codes')
+        .update({
+          status: 'consumed',
+          consumed_by: existingCustomer.id,
+          consumed_at: consumedAt,
+        })
+        .eq('id', accessCode.id)
+        .eq('status', 'active')
+        .select('id')
+        .maybeSingle();
+
+      if (consumeError) {
+        throw consumeError;
+      }
+
+      if (!consumedRow) {
+        return json({ valid: false, reason: 'consumed' }, 200, origin);
+      }
+
       let bigCommerceCustomerId: number | null = null;
 
       try {
@@ -136,28 +192,26 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: accessCode, error: accessCodeError } = await supabase
+    // First-time customer: atomic consume FIRST, then insert. If consume loses
+    // the race (another request consumed this code between our check and
+    // update), we reject before creating any customer row.
+    const { data: consumedRow, error: consumeError } = await supabase
       .from('access_codes')
-      .select('*')
-      .eq('code', code)
-      .maybeSingle<AccessCode>();
+      .update({
+        status: 'consumed',
+        consumed_at: consumedAt,
+      })
+      .eq('id', accessCode.id)
+      .eq('status', 'active')
+      .select('id')
+      .maybeSingle();
 
-    if (accessCodeError) {
-      throw accessCodeError;
+    if (consumeError) {
+      throw consumeError;
     }
 
-    if (!accessCode) {
-      return json({ valid: false, reason: 'not_found' }, 200, origin);
-    }
-
-    const now = new Date();
-
-    if (accessCode.status === 'consumed') {
+    if (!consumedRow) {
       return json({ valid: false, reason: 'consumed' }, 200, origin);
-    }
-
-    if (accessCode.status !== 'active' || new Date(accessCode.expires_at) <= now) {
-      return json({ valid: false, reason: 'expired' }, 200, origin);
     }
 
     const { data: customer, error: customerError } = await supabase
@@ -177,20 +231,13 @@ export async function POST(request: Request) {
       throw customerError;
     }
 
-    const consumedAt = now.toISOString();
-
-    const { error: consumeError } = await supabase
+    const { error: backfillError } = await supabase
       .from('access_codes')
-      .update({
-        status: 'consumed',
-        consumed_by: customer.id,
-        consumed_at: consumedAt,
-      })
-      .eq('id', accessCode.id)
-      .eq('status', 'active');
+      .update({ consumed_by: customer.id })
+      .eq('id', accessCode.id);
 
-    if (consumeError) {
-      throw consumeError;
+    if (backfillError) {
+      throw backfillError;
     }
 
     let bigCommerceCustomerId: number | null = null;
