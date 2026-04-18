@@ -3,6 +3,7 @@ import {
   createBigCommerceCustomer,
   getBigCommerceCustomerByEmail,
 } from '@/lib/bigcommerce';
+import { mintSessionToken } from '@/lib/session-token';
 import type { AccessCode, Customer } from '@/lib/types';
 
 const allowedOrigins = new Set(
@@ -186,6 +187,7 @@ export async function POST(request: Request) {
           valid: true,
           customer_id: existingCustomer.id,
           bc_customer_id: bigCommerceCustomerId,
+          session_token: mintSessionToken(existingCustomer.id),
         },
         200,
         origin,
@@ -254,7 +256,12 @@ export async function POST(request: Request) {
     }
 
     return json(
-      { valid: true, customer_id: customer.id, bc_customer_id: bigCommerceCustomerId },
+      {
+        valid: true,
+        customer_id: customer.id,
+        bc_customer_id: bigCommerceCustomerId,
+        session_token: mintSessionToken(customer.id),
+      },
       200,
       origin,
     );
