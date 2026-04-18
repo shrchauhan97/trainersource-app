@@ -276,10 +276,10 @@ export default function MainContent({ showAgeNotice = false }: MainContentProps)
             </p>
           </div>
           <nav className="flex flex-col gap-4">
-            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">FAQ</Link>
-            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">About</Link>
-            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">Terms</Link>
-            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">Privacy Policy</Link>
+            <Link href="#three-options" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">FAQ</Link>
+            <Link href="#ultimate-mission" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">About</Link>
+            <Link href="#affiliate-program" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">Affiliate Program</Link>
+            <Link href="/login" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">Trainer Login</Link>
           </nav>
           <div className="flex flex-col gap-6">
             <Link
@@ -288,12 +288,12 @@ export default function MainContent({ showAgeNotice = false }: MainContentProps)
             >
               Apply Now
             </Link>
-            <Link
-              href="/contact"
+            <a
+              href="mailto:hello@trainersource.com"
               className="border border-slate-700 text-slate-300 font-bold py-4 rounded-sm tracking-[0.1em] text-xs hover:bg-slate-800 transition-colors uppercase text-center"
             >
               Contact Us
-            </Link>
+            </a>
           </div>
         </div>
       </footer>
