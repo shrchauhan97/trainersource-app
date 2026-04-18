@@ -13,6 +13,19 @@ const allowedOrigins = new Set(
 );
 const fallbackOrigin = 'https://ultimate-peptides.com';
 
+// Server-side country allowlist (review finding H1). The storefront form has
+// a dropdown, but the endpoint is reachable directly from any client so the
+// client-side list alone is not a security control. Default matches the
+// storefront's COUNTRIES array; override via env when launching into new
+// markets. Comparison is case-insensitive and trims whitespace to match the
+// normalized `country` value we compute below.
+const allowedCountries = new Set(
+  (process.env.ACCESS_GATE_ALLOWED_COUNTRIES ?? 'Singapore,UAE,Japan,United States')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean),
+);
+
 type ValidateCodeBody = {
   code?: string;
   email?: string;
@@ -103,6 +116,10 @@ export async function POST(request: Request) {
 
     if (!code || !email || !name || !country || !city) {
       return json({ valid: false, reason: 'invalid_payload' }, 400, origin);
+    }
+
+    if (!allowedCountries.has(country.toLowerCase())) {
+      return json({ valid: false, reason: 'country_not_supported' }, 200, origin);
     }
 
     const supabase = await createClient();
