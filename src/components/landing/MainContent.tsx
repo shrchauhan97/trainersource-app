@@ -10,8 +10,8 @@ export default function MainContent({ showAgeNotice = false }: MainContentProps)
     <main className="w-full lg:ml-[33.333%] lg:w-2/3 bg-surface text-on-surface">
       <nav className="sticky top-0 z-40 bg-white border-b border-slate-200 px-12 py-5 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <Link href="#peptides" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">Peptides</Link>
-          <Link href="#about" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">About Us</Link>
+          <Link href="#three-options" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">Peptides</Link>
+          <Link href="#ultimate-mission" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">About Us</Link>
         </div>
         <div className="flex items-center gap-6">
           <Link href="/login" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">Log In</Link>
