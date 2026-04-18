@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 type MainContentProps = {
@@ -6,176 +7,285 @@ type MainContentProps = {
 
 export default function MainContent({ showAgeNotice = false }: MainContentProps) {
   return (
-    <main className="w-full lg:w-2/3 lg:ml-[33.333333%] flex flex-col bg-surface min-h-screen text-slate-900">
-      <nav className="sticky top-0 z-30 bg-surface/90 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <div className="flex gap-6 font-heading font-bold text-sm tracking-widest uppercase">
-          <Link href="#peptides" className="hover:text-primary transition-colors">Peptides</Link>
-          <Link href="#about" className="hover:text-primary transition-colors">About Us</Link>
+    <main className="w-full lg:ml-[33.333%] lg:w-2/3 bg-surface text-on-surface">
+      <nav className="sticky top-0 z-40 bg-white border-b border-slate-200 px-12 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-8">
+          <Link href="#peptides" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">Peptides</Link>
+          <Link href="#about" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">About Us</Link>
         </div>
-        <div className="flex items-center gap-4 font-heading font-bold text-sm tracking-widest uppercase">
-          <Link href="/login" className="hover:text-primary transition-colors">Log In</Link>
-          <Link href="/apply" className="bg-primary text-white px-5 py-2 rounded hover:bg-red-900 transition-colors">Sign Up</Link>
+        <div className="flex items-center gap-6">
+          <Link href="/login" className="text-[14px] font-bold uppercase tracking-wider text-slate-900 hover:text-clinical-slate transition-colors">Log In</Link>
+          <Link href="/apply" className="text-[14px] font-bold uppercase tracking-wider border border-slate-900 px-5 py-2 rounded-sm hover:bg-slate-900 hover:text-white transition-all">Sign Up</Link>
         </div>
       </nav>
 
-      <div className="p-6 md:p-12 lg:p-16 flex flex-col gap-24">
-        <section id="hero" className="flex flex-col gap-6">
+      <section id="program-partner" className="bg-white pb-12 px-24 pt-16">
+        <div className="max-w-4xl mx-auto">
           {showAgeNotice ? (
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-hyrox-orange/30 bg-hyrox-orange/10 px-4 py-2 text-xs font-heading font-bold uppercase tracking-[0.2em] text-primary">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-hyrox-orange text-white">21+</span>
-              Research use only • adults 21+
-            </div>
-          ) : null}
-          <h2 className="font-heading font-extrabold text-4xl md:text-5xl lg:text-6xl text-primary leading-tight uppercase tracking-tight">
-            Ultimate Peptides: <br />
-            Confirmed Purity, <br />
-            Biggest Savings
+            <span className="inline-block px-3 py-1 bg-green-100 text-green-900 text-[10px] font-bold tracking-widest uppercase mb-6 rounded-sm">
+              TrainerSource Program Partner · Research Use Only · 21+
+            </span>
+          ) : (
+            <span className="inline-block px-3 py-1 bg-green-100 text-green-900 text-[10px] font-bold tracking-widest uppercase mb-6 rounded-sm">
+              TrainerSource Program Partner
+            </span>
+          )}
+          <h2 className="text-5xl md:text-6xl font-heading font-bold text-slate-900 tracking-tighter mb-12">
+            Ultimate Peptides: Confirmed Purity, Biggest Savings
           </h2>
-          <div className="w-full h-[400px] bg-slate-300 rounded-lg" role="img" aria-label="Hero Image showing peptides"></div>
-        </section>
+          <div className="aspect-video relative overflow-hidden rounded-lg bg-slate-100">
+            <Image
+              src="/assets/center-hero.png"
+              alt="Ultimate Peptides product vial lineup — Retatrutide, Zepatide, Morelin, MOTS, GHK-CU, DSIP, Amorelin"
+              fill
+              sizes="(min-width: 1024px) 66vw, 100vw"
+              className="object-contain p-8"
+              priority
+            />
+          </div>
+        </div>
+      </section>
 
-        <section id="about" className="flex flex-col items-start gap-8 bg-white p-8 md:p-12 rounded-xl shadow-sm border border-slate-100">
-          <h2 className="font-heading font-extrabold text-3xl md:text-4xl text-primary uppercase tracking-tight">
-            A Peptide Brand That Is More Than Just A Label
+      <section id="ultimate-mission" className="px-24 bg-white pb-24 pt-12">
+        <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
+          <h2 className="text-4xl md:text-5xl font-heading font-bold text-slate-900 tracking-tight mb-8">
+            A Peptide Brand That Is More Than Just A Label.
           </h2>
-          <p className="text-lg text-slate-600 max-w-3xl leading-relaxed">
-            We partner with the best in the industry to ensure your clients receive the highest quality products. 
-            Our commitment goes beyond just supplying; we educate, support, and help you grow your business.
+          <p className="text-xl text-slate-600 leading-relaxed mb-12">
+            With end-to-end production, always-on texting support and high-end packaging, Ultimate is how trainers keep their clients safe and happy.
           </p>
-          <div className="flex flex-wrap gap-4">
-            <Link href="/apply" className="bg-hyrox-orange hover:bg-orange-600 text-white font-heading font-bold text-sm uppercase tracking-widest py-4 px-8 rounded transition-all">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+            <Link
+              href="/apply"
+              className="bg-hyrox-orange text-white font-bold py-5 px-8 rounded-lg tracking-[0.2em] text-[10px] uppercase min-w-[220px] text-center transition-transform active:scale-95 duration-200"
+            >
               Become An Affiliate
             </Link>
-            <a href="https://ultimate-peptides.com" target="_blank" rel="noopener noreferrer" className="border-2 border-primary text-primary hover:bg-primary hover:text-white font-heading font-bold text-sm uppercase tracking-widest py-4 px-8 rounded transition-all">
+            <a
+              href="https://ultimate-peptides.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-clinical-slate text-white font-bold py-5 px-8 rounded-lg tracking-[0.2em] text-[10px] uppercase min-w-[220px] text-center transition-transform active:scale-95 duration-200"
+            >
               Visit Partner Site
             </a>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="why" className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          <div className="w-full h-[300px] bg-slate-300 rounded-lg" role="img" aria-label="Image explaining why peptides"></div>
-          <div className="flex flex-col gap-6">
-            <h2 className="font-heading font-extrabold text-3xl text-primary uppercase tracking-tight">
+      <section id="why-peptides" className="flex flex-col md:flex-row">
+        <div className="w-full md:w-1/2 aspect-square relative overflow-hidden group">
+          <Image
+            src="/assets/why-peptides-trainer.png"
+            alt="Personal trainer in discussion with older client in a high-end gym"
+            fill
+            sizes="(min-width: 768px) 33vw, 100vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+          <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center">
+            <h3 className="text-white text-5xl font-heading font-bold tracking-tight">
               Why Peptides?
-            </h2>
-            <p className="text-lg text-slate-600 leading-relaxed">
-              Peptides are transforming the fitness and wellness industry by accelerating recovery, supporting lean muscle growth, and optimizing overall health. Providing your clients with reliable access to premium peptides sets you apart as a forward-thinking trainer.
-            </p>
+            </h3>
           </div>
-        </section>
+        </div>
+        <div className="w-full md:w-1/2 p-24 bg-slate-50 flex flex-col justify-center">
+          <p className="text-slate-600 leading-relaxed text-xl max-w-md">
+            Peptides are the most-requested product in every gym. Everyone wants them.. but many can&apos;t afford them.
+          </p>
+        </div>
+      </section>
 
-        <section id="options" className="flex flex-col gap-10">
-          <h2 className="font-heading font-extrabold text-3xl text-primary uppercase tracking-tight text-center">
-            Three Options: Prescription, Remote and Research-Only
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-8 rounded-xl shadow-sm border-t-4 border-hyrox-orange flex flex-col gap-4 text-center">
-              <h3 className="font-heading font-bold text-xl uppercase tracking-wide">Prescription</h3>
-              <div className="text-4xl font-extrabold text-clinical-slate">$540</div>
-              <p className="text-slate-500 mt-2">Full clinical oversight and dedicated pharmacy fulfillment.</p>
-            </div>
-            <div className="bg-white p-8 rounded-xl shadow-sm border-t-4 border-hyrox-orange flex flex-col gap-4 text-center">
-              <h3 className="font-heading font-bold text-xl uppercase tracking-wide">Remote</h3>
-              <div className="text-4xl font-extrabold text-clinical-slate">$350</div>
-              <p className="text-slate-500 mt-2">Telehealth consultation with streamlined delivery.</p>
-            </div>
-            <div className="bg-white p-8 rounded-xl shadow-sm border-t-4 border-hyrox-orange flex flex-col gap-4 text-center">
-              <h3 className="font-heading font-bold text-xl uppercase tracking-wide">Research-Only</h3>
-              <div className="text-4xl font-extrabold text-clinical-slate">$230</div>
-              <p className="text-slate-500 mt-2">Direct access for qualified research purposes.</p>
-            </div>
+      <section id="three-options" className="flex flex-col md:flex-row-reverse bg-slate-100">
+        <div className="w-full md:w-1/2 aspect-square relative overflow-hidden group">
+          <Image
+            src="/assets/three-options-labglass.png"
+            alt="Laboratory glassware and scientific instruments"
+            fill
+            sizes="(min-width: 768px) 33vw, 100vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+          <div className="absolute inset-0 bg-slate-800/60 flex items-center justify-center">
+            <h3 className="text-white font-heading font-bold tracking-tight text-3xl lg:text-4xl text-center px-12">
+              Three Options: Prescription, Remote and Research-Only
+            </h3>
           </div>
-        </section>
+        </div>
+        <div className="w-full md:w-1/2 p-24 flex flex-col justify-center">
+          <div className="max-w-md text-slate-600 leading-relaxed text-lg space-y-4">
+            <p>Weight loss peptides come in three options:</p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li>Prescriptions (about $540/m),</li>
+              <li>Remote ($350/m),</li>
+              <li>Research-Only ($230/m).</li>
+            </ul>
+            <p>If cost drives clients to &apos;Research Only&apos;... what brand can they trust?</p>
+          </div>
+        </div>
+      </section>
 
-        <section id="solution" className="flex flex-col gap-10 bg-clinical-slate text-white p-8 md:p-12 rounded-xl">
-          <h2 className="font-heading font-extrabold text-3xl uppercase tracking-tight text-center">
+      <section id="solution" className="p-24 bg-white">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-4xl font-heading font-bold text-slate-900 mb-16 tracking-tighter">
             The TrainerSource Solution
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-4">
-            <div className="flex flex-col gap-6">
-              <h3 className="font-heading font-bold text-xl uppercase tracking-wide text-hyrox-orange border-b border-white/20 pb-4">Ultimate Peptides</h3>
-              <ul className="flex flex-col gap-4">
-                <li className="flex items-center gap-3"><span className="material-symbols-outlined text-hyrox-orange">check_circle</span> Industry-leading purity</li>
-                <li className="flex items-center gap-3"><span className="material-symbols-outlined text-hyrox-orange">check_circle</span> Rigorous third-party testing</li>
-                <li className="flex items-center gap-3"><span className="material-symbols-outlined text-hyrox-orange">check_circle</span> Direct-to-consumer pricing</li>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
+            <div className="space-y-4">
+              <p className="text-clinical-slate text-[10px] font-bold uppercase tracking-[0.2em]">Program Partner:</p>
+              <h4 className="font-heading font-bold text-xl text-slate-800 border-b border-slate-200 pb-4 leading-tight min-h-[4rem]">
+                Ultimate<br />Peptides
+              </h4>
+              <ul className="space-y-4 pt-4">
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-hyrox-orange text-sm mt-1">check_circle</span>
+                  <span className="text-slate-600">Batch tested for &gt;99% purity</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-hyrox-orange text-sm mt-1">check_circle</span>
+                  <span className="text-slate-600">End-to-end production</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-hyrox-orange text-sm mt-1">check_circle</span>
+                  <span className="text-slate-600">Scannable COAs</span>
+                </li>
               </ul>
             </div>
-            <div className="flex flex-col gap-6">
-              <h3 className="font-heading font-bold text-xl uppercase tracking-wide text-hyrox-orange border-b border-white/20 pb-4">TrainerSource</h3>
-              <ul className="flex flex-col gap-4">
-                <li className="flex items-center gap-3"><span className="material-symbols-outlined text-hyrox-orange">check_circle</span> Automated commission tracking</li>
-                <li className="flex items-center gap-3"><span className="material-symbols-outlined text-hyrox-orange">check_circle</span> Marketing resources & assets</li>
-                <li className="flex items-center gap-3"><span className="material-symbols-outlined text-hyrox-orange">check_circle</span> Dedicated account management</li>
+            <div className="space-y-4">
+              <p className="text-clinical-slate text-[10px] font-bold uppercase tracking-[0.2em]">Supported By:</p>
+              <h4 className="font-heading font-bold text-xl text-slate-800 border-b border-slate-200 pb-4 leading-tight min-h-[4rem]">
+                TrainerSource<br />Peptide Program
+              </h4>
+              <ul className="space-y-4 pt-4">
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-hyrox-orange text-sm mt-1">check_circle</span>
+                  <span className="text-slate-600">Always-on Concierge, via Telegram</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-hyrox-orange text-sm mt-1">check_circle</span>
+                  <span className="text-slate-600">Dosing calculator, via web app</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-hyrox-orange text-sm mt-1">check_circle</span>
+                  <span className="text-slate-600">Ecomm ordering, via credit card</span>
+                </li>
               </ul>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="journey" className="flex flex-col gap-10">
-          <h2 className="font-heading font-extrabold text-3xl text-primary uppercase tracking-tight text-center">
-            Client Peptide Journey
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-surface border-4 border-primary text-primary flex items-center justify-center font-bold text-xl">1</div>
-              <h3 className="font-heading font-bold uppercase tracking-wide text-lg">Discovery</h3>
-              <p className="text-sm text-slate-500">Client identifies a need for enhanced recovery or performance.</p>
-            </div>
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-surface border-4 border-primary text-primary flex items-center justify-center font-bold text-xl">2</div>
-              <h3 className="font-heading font-bold uppercase tracking-wide text-lg">Educate</h3>
-              <p className="text-sm text-slate-500">You provide clinical insights and recommend the right approach.</p>
-            </div>
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-surface border-4 border-primary text-primary flex items-center justify-center font-bold text-xl">3</div>
-              <h3 className="font-heading font-bold uppercase tracking-wide text-lg">Purchase</h3>
-              <p className="text-sm text-slate-500">Client uses your affiliate link to buy premium products.</p>
-            </div>
-            <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-surface border-4 border-primary text-primary flex items-center justify-center font-bold text-xl">4</div>
-              <h3 className="font-heading font-bold uppercase tracking-wide text-lg">Train</h3>
-              <p className="text-sm text-slate-500">Improved outcomes lead to better training and retention.</p>
+      <section id="client-journey">
+        <div className="bg-clinical-slate py-16 px-24 text-center">
+          <div className="max-w-6xl mx-auto">
+            <h2 className="text-5xl font-heading font-bold text-white mb-4 tracking-tighter">
+              Client Peptide Journey
+            </h2>
+            <p className="text-slate-300 text-xl max-w-2xl mx-auto">
+              Supporting &amp; Enabling Affiliates Sales
+            </p>
+          </div>
+        </div>
+        <div className="bg-white py-16 px-24">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-left">
+              <div className="space-y-4">
+                <div className="text-6xl font-heading font-extrabold text-clinical-slate">01</div>
+                <h5 className="text-slate-900 font-heading font-bold uppercase tracking-widest text-sm">Discovery</h5>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Trainer refers clients to TrainerSource concierge (Telegram) and Ultimate (website).
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-6xl font-heading font-extrabold text-clinical-slate">02</div>
+                <h5 className="text-slate-900 font-heading font-bold uppercase tracking-widest text-sm">Educate</h5>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Concierge offers links, tips and safe protocols.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-6xl font-heading font-extrabold text-clinical-slate">03</div>
+                <h5 className="text-slate-900 font-heading font-bold uppercase tracking-widest text-sm">Purchase</h5>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Clients buy via ecomm site, receive peptides in under three days.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-6xl font-heading font-extrabold text-clinical-slate">04</div>
+                <h5 className="text-slate-900 font-heading font-bold uppercase tracking-widest text-sm">Train</h5>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  Clients enjoy better results, Trainers monitor progress.
+                </p>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="affiliate" className="bg-primary text-white p-10 md:p-16 rounded-xl flex flex-col items-center text-center gap-8 shadow-xl">
-          <h2 className="font-heading font-extrabold text-3xl md:text-4xl uppercase tracking-tight">
-            Earning Income, Helping Clients
-          </h2>
-          <p className="text-lg text-white/80 max-w-2xl">
-            Join the most rewarding affiliate program in the industry. Equip your clients with the best tools while building a passive revenue stream for your business.
-          </p>
-          <Link href="/apply" className="bg-white text-primary hover:bg-slate-100 font-heading font-bold text-lg uppercase tracking-widest py-5 px-10 rounded shadow-lg transition-all mt-4">
-            Apply Now
-          </Link>
-        </section>
+      <section id="affiliate-program" className="flex flex-col md:flex-row bg-slate-50 border-t border-slate-200">
+        <div className="w-full md:w-1/2 p-24 flex flex-col justify-center">
+          <div className="max-w-md">
+            <span className="inline-block px-3 py-1 bg-green-100 text-green-900 text-[10px] font-bold tracking-widest uppercase mb-6 rounded-sm">
+              TrainerSource Affiliates
+            </span>
+            <h2 className="text-4xl font-heading font-bold text-slate-900 mb-8 tracking-tighter">
+              Earning Income, Helping Clients
+            </h2>
+            <p className="text-slate-600 leading-relaxed mb-12">
+              Earn lifetime commissions referring safe and affordable products. TrainerSource answers client questions, guides their journey and delivers products within three working days within Singapore, UAE and Japan. Every TrainerSource product is not only third-party tested... it&apos;s verified to the founder level.
+            </p>
+            <Link
+              href="/apply"
+              className="inline-block bg-hyrox-orange text-white font-bold py-5 px-10 rounded-sm tracking-[0.2em] text-xs uppercase transition-all hover:shadow-xl"
+            >
+              Apply Now
+            </Link>
+          </div>
+        </div>
+        <div className="w-full md:w-1/2 aspect-square relative overflow-hidden">
+          <Image
+            src="/assets/affiliate-trainer.png"
+            alt="A smiling trainer sitting in a car"
+            fill
+            sizes="(min-width: 768px) 33vw, 100vw"
+            className="object-cover"
+          />
+        </div>
+      </section>
 
-      </div>
-
-      <footer className="bg-slate-900 text-white mt-auto p-12 md:p-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          <div className="flex flex-col gap-4">
-            <div className="font-heading font-extrabold text-xl tracking-widest uppercase flex items-center gap-2">
-              <div className="w-6 h-6 bg-hyrox-orange rounded flex items-center justify-center text-white text-xs">TS</div>
-              TrainerSource
+      <footer className="bg-[#121212] p-24 text-white">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16">
+          <div>
+            <div className="flex items-center gap-2 mb-8">
+              <Image
+                src="/assets/logo-graphic.png"
+                alt="TrainerSource logo"
+                width={40}
+                height={40}
+                className="rounded-sm"
+              />
+              <span className="text-lg font-bold tracking-tighter font-heading">TRAINERSOURCE</span>
             </div>
-            <p className="text-sm text-slate-400 mt-2 max-w-xs">
+            <p className="text-slate-500 text-[10px] font-bold tracking-widest uppercase leading-relaxed">
               © 2024 TRAINERSOURCE PERFORMANCE LAB. ALL RIGHTS RESERVED.
             </p>
           </div>
-          <div className="flex flex-col gap-3 font-heading text-sm tracking-widest uppercase">
-            <Link href="#peptides" className="text-slate-300 hover:text-white transition-colors">Peptides</Link>
-            <Link href="#about" className="text-slate-300 hover:text-white transition-colors">About Us</Link>
-            <Link href="/apply" className="text-slate-300 hover:text-white transition-colors">Affiliate Program</Link>
-            <Link href="/login" className="text-slate-300 hover:text-white transition-colors">Trainer Portal</Link>
-          </div>
-          <div className="flex flex-col items-start gap-4">
-            <Link href="/apply" className="bg-hyrox-orange hover:bg-orange-600 text-white font-heading font-bold text-xs uppercase tracking-widest py-3 px-6 rounded transition-all">
-              Apply Today
+          <nav className="flex flex-col gap-4">
+            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">FAQ</Link>
+            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">About</Link>
+            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">Terms</Link>
+            <Link href="#" className="text-slate-500 hover:text-orange-500 transition-colors text-[10px] font-bold tracking-widest uppercase">Privacy Policy</Link>
+          </nav>
+          <div className="flex flex-col gap-6">
+            <Link
+              href="/apply"
+              className="bg-orange-600 text-white font-bold py-4 rounded-sm tracking-[0.1em] text-xs uppercase text-center"
+            >
+              Apply Now
             </Link>
-            <Link href="/login" className="border border-slate-600 hover:border-white text-white font-heading font-bold text-xs uppercase tracking-widest py-3 px-6 rounded transition-all">
-              Log In
+            <Link
+              href="/contact"
+              className="border border-slate-700 text-slate-300 font-bold py-4 rounded-sm tracking-[0.1em] text-xs hover:bg-slate-800 transition-colors uppercase text-center"
+            >
+              Contact Us
             </Link>
           </div>
         </div>

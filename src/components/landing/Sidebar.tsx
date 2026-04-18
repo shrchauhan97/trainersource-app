@@ -1,53 +1,68 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function Sidebar() {
   return (
-    <aside className="w-full lg:w-1/3 lg:fixed lg:top-0 lg:bottom-0 lg:left-0 bg-clinical-slate text-white flex flex-col z-20">
-      <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16 flex flex-col gap-12">
-        <div className="font-heading font-extrabold text-2xl tracking-widest uppercase flex items-center gap-2">
-          <div className="w-8 h-8 bg-hyrox-orange rounded flex items-center justify-center text-white text-sm">TS</div>
-          TrainerSource
-        </div>
-
-        <h1 className="font-heading font-extrabold text-4xl md:text-5xl lg:text-6xl leading-tight uppercase tracking-tight">
-          Delivering <br className="hidden lg:block" />
-          The Products <br className="hidden lg:block" />
-          Your Clients Need
-        </h1>
-
-        <div className="flex flex-col gap-4">
-          <div className="bg-white/10 p-5 rounded-xl border border-white/20 backdrop-blur-sm flex items-start gap-4">
-            <span className="material-symbols-outlined text-hyrox-orange text-3xl shrink-0">support_agent</span>
-            <div>
-              <h3 className="font-heading font-bold text-lg uppercase tracking-wide mb-1">Always-On Support</h3>
-              <p className="text-white/80 text-sm font-body">Dedicated clinical guidance for you and your clients.</p>
-            </div>
-          </div>
-          
-          <div className="bg-white/10 p-5 rounded-xl border border-white/20 backdrop-blur-sm flex items-start gap-4">
-            <span className="material-symbols-outlined text-hyrox-orange text-3xl shrink-0">storefront</span>
-            <div>
-              <h3 className="font-heading font-bold text-lg uppercase tracking-wide mb-1">Online Store</h3>
-              <p className="text-white/80 text-sm font-body">Seamless purchasing experience via our platform.</p>
-            </div>
-          </div>
-          
-          <div className="bg-white/10 p-5 rounded-xl border border-white/20 backdrop-blur-sm flex items-start gap-4">
-            <span className="material-symbols-outlined text-hyrox-orange text-3xl shrink-0">payments</span>
-            <div>
-              <h3 className="font-heading font-bold text-lg uppercase tracking-wide mb-1">Affiliate Codes</h3>
-              <p className="text-white/80 text-sm font-body">Track referrals and earn commission automatically.</p>
-            </div>
+    <aside className="w-full lg:fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-1/3 bg-clinical-slate text-white flex flex-col p-12 z-50 overflow-y-auto">
+      <div className="flex-grow">
+        <div className="flex items-center gap-3 mb-12">
+          <Image
+            src="/assets/logo-graphic.png"
+            alt="TrainerSource logo"
+            width={48}
+            height={48}
+            className="rounded-sm"
+            priority
+          />
+          <div className="text-2xl font-bold tracking-tighter text-white font-heading">
+            TRAINERSOURCE
           </div>
         </div>
 
-        <div className="mt-auto pt-8">
-          <Link 
-            href="/apply" 
-            className="block w-full bg-hyrox-orange hover:bg-orange-600 text-white font-heading font-bold text-lg uppercase tracking-widest py-5 px-6 rounded-lg text-center transition-all shadow-lg hover:shadow-orange-500/20"
-          >
-            Join The Program
-          </Link>
+        <div className="space-y-12">
+          <div className="pt-8">
+            <h1 className="text-5xl lg:text-6xl font-heading font-extrabold text-white leading-tight tracking-tighter uppercase mb-12">
+              Delivering the products your clients need
+            </h1>
+
+            <div className="mb-10">
+              <p className="text-xs font-bold text-slate-300 tracking-[0.2em] mb-6 uppercase">
+                Our Offering:
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-white/5 border border-white/10 p-5 rounded-lg flex flex-col">
+                  <span className="material-symbols-outlined text-white text-3xl mb-3">smartphone</span>
+                  <p className="text-white font-heading font-bold text-sm mb-2 leading-tight">Always-On Support</p>
+                  <ul className="text-slate-400 text-xs list-disc ml-4 space-y-0.5">
+                    <li>Via Telegram Chat</li>
+                  </ul>
+                </div>
+                <div className="bg-white/5 border border-white/10 p-5 rounded-lg flex flex-col">
+                  <span className="material-symbols-outlined text-white text-3xl mb-3">storefront</span>
+                  <p className="text-white font-heading font-bold text-sm mb-2 leading-tight">Online Store</p>
+                  <ul className="text-slate-400 text-xs list-disc ml-4 space-y-0.5">
+                    <li>with Next-Day Delivery</li>
+                  </ul>
+                </div>
+                <div className="bg-white/5 border border-white/10 p-5 rounded-lg flex flex-col">
+                  <span className="material-symbols-outlined text-white text-3xl mb-3">payments</span>
+                  <p className="text-white font-heading font-bold text-sm mb-2 leading-tight">Affiliate Codes</p>
+                  <ul className="text-slate-400 text-xs list-disc ml-4 space-y-0.5">
+                    <li>Persistent</li>
+                    <li>Simple</li>
+                    <li>Rewarding</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <Link
+              href="/apply"
+              className="block w-full bg-hyrox-orange text-white font-bold py-4 px-8 rounded-lg tracking-widest text-xs uppercase transition-transform active:scale-95 duration-200 text-center"
+            >
+              Join the Program
+            </Link>
+          </div>
         </div>
       </div>
     </aside>
