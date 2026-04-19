@@ -151,3 +151,10 @@ CREATE POLICY "payouts_admin_all" ON public.payouts FOR ALL TO authenticated
 --     SELECT * FROM trainers;          -- expect 0 rows / permission denied
 --   RESET ROLE;
 --------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- bot_user_acknowledgments: service-role-only. No public policies = anon
+-- and authenticated roles have zero access. The bot runs with the service
+-- role key, which bypasses RLS entirely.
+ALTER TABLE public.bot_user_acknowledgments ENABLE ROW LEVEL SECURITY;
+--------------------------------------------------------------------------------

@@ -137,3 +137,14 @@ CREATE INDEX IF NOT EXISTS idx_commissions_trainer ON commissions(trainer_id);
 CREATE INDEX IF NOT EXISTS idx_commissions_payout ON commissions(payout_id);
 CREATE INDEX IF NOT EXISTS idx_commissions_status ON commissions(status);
 CREATE INDEX IF NOT EXISTS idx_payouts_trainer ON payouts(trainer_id);
+
+-- Bot acknowledgment ledger — records each Telegram user's one-time
+-- acknowledgment of the research-use disclaimer gate in @peptidebutlerbot.
+-- Version column exists so a material disclaimer change (e.g. new hard-block
+-- category) can re-gate every user by bumping ACKNOWLEDGMENT_VERSION in the
+-- bot's env. Bot writes via the service role key (bypasses RLS).
+create table if not exists public.bot_user_acknowledgments (
+  telegram_user_id       bigint      primary key,
+  acknowledgment_version text        not null,
+  acknowledged_at        timestamptz not null default now()
+);
