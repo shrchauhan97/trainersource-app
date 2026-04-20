@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# QA/screenshot output from scripts/qa-prod.mjs + scripts/shot-*.mjs
+docs/stitch/
