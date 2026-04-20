@@ -151,36 +151,36 @@ create table if not exists public.bot_user_acknowledgments (
 
 -- === kb_chunks (Peptide Concierge v2 RAG) ===
 
-CREATE EXTENSION IF NOT EXISTS vector;
+create extension if not exists vector;
 
-CREATE TABLE IF NOT EXISTS kb_chunks (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  source_type     text NOT NULL,
-  source_creator  text,
-  source_url      text,
-  source_title    text NOT NULL,
-  attribute       boolean NOT NULL DEFAULT true,
-  mode            text NOT NULL DEFAULT 'all',
-  parent_doc_id   text NOT NULL,
-  chunk_position  int NOT NULL,
-  text            text NOT NULL,
-  tags            text[] NOT NULL DEFAULT '{}',
-  sku_hints       text[] NOT NULL DEFAULT '{}',
-  embedding       vector(768) NOT NULL,
-  ingested_at     timestamptz NOT NULL DEFAULT now(),
-  content_hash    text NOT NULL UNIQUE,
-  CONSTRAINT kb_chunks_mode_check CHECK (mode IN ('all', 'partner_only', 'customer_only')),
-  CONSTRAINT kb_chunks_source_type_check CHECK (
-    source_type IN ('matt_kb', 'yt_huberman', 'yt_smashrx', 'yt_creator',
+create table if not exists public.kb_chunks (
+  id               uuid primary key default gen_random_uuid(),
+  source_type      text not null,
+  source_creator   text,
+  source_url       text,
+  source_title     text not null,
+  show_attribution boolean not null default true,
+  mode             text not null default 'all',
+  parent_doc_id    text not null,
+  chunk_position   int not null,
+  text             text not null,
+  tags             text[] not null default '{}',
+  sku_hints        text[] not null default '{}',
+  embedding        vector(768) not null,
+  ingested_at      timestamptz not null default now(),
+  content_hash     text not null unique,
+  constraint kb_chunks_mode_check check (mode in ('all', 'partner_only', 'customer_only')),
+  constraint kb_chunks_source_type_check check (
+    source_type in ('matt_kb', 'yt_huberman', 'yt_smashrx', 'yt_creator',
                     'yt_howto', 'pubmed', 'l30d', 'ts_manual')
   )
 );
 
-CREATE INDEX IF NOT EXISTS kb_chunks_embedding_idx
-  ON kb_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 50);
-CREATE INDEX IF NOT EXISTS kb_chunks_source_mode_idx
-  ON kb_chunks (source_type, mode);
-CREATE INDEX IF NOT EXISTS kb_chunks_creator_idx
-  ON kb_chunks (source_creator) WHERE source_creator IS NOT NULL;
-CREATE INDEX IF NOT EXISTS kb_chunks_sku_hints_idx
-  ON kb_chunks USING gin (sku_hints);
+create index if not exists kb_chunks_embedding_idx
+  on public.kb_chunks using hnsw (embedding vector_cosine_ops);
+create index if not exists kb_chunks_source_mode_idx
+  on public.kb_chunks (source_type, mode);
+create index if not exists kb_chunks_creator_idx
+  on public.kb_chunks (source_creator) where source_creator is not null;
+create index if not exists kb_chunks_sku_hints_idx
+  on public.kb_chunks using gin (sku_hints);

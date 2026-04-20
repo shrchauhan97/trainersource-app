@@ -160,9 +160,9 @@ ALTER TABLE public.bot_user_acknowledgments ENABLE ROW LEVEL SECURITY;
 --------------------------------------------------------------------------------
 
 -- === kb_chunks RLS ===
-ALTER TABLE kb_chunks ENABLE ROW LEVEL SECURITY;
+alter table public.kb_chunks enable row level security;
 
 -- Service role bypass only — no anon/authenticated access
 -- (bot uses service role key; portal does not query this table)
-CREATE POLICY kb_chunks_service_role ON kb_chunks
-  FOR ALL TO service_role USING (true) WITH CHECK (true);
+create policy kb_chunks_service_role on public.kb_chunks
+  for all to service_role using (true) with check (true);
