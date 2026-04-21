@@ -30,10 +30,17 @@ beforeEach(() => {
   mockEq.mockReturnValue({ maybeSingle: mockMaybeSingle });
   mockSelect.mockReturnValue({ eq: mockEq });
   mockFrom.mockReturnValue({ select: mockSelect });
+  // Re-wire the auth-date default to "now" (clearAllMocks wiped the factory default)
+  vi.mocked(getAuthDateSeconds).mockImplementation(() =>
+    Math.floor(Date.now() / 1000),
+  );
   process.env.TELEGRAM_BOT_TOKEN = 'test-bot-token';
 });
 
-import { verifyTelegramWebApp } from '@/lib/telegram-auth';
+import {
+  verifyTelegramWebApp,
+  getAuthDateSeconds,
+} from '@/lib/telegram-auth';
 import {
   getCustomerOrders,
   getOrderProducts,
@@ -73,6 +80,36 @@ describe('GET /api/reorder/orders', () => {
     expect(res.status).toBe(404);
     const body = await res.json();
     expect(body.error).toMatch(/not linked/i);
+  });
+
+  it('returns 401 when initData is stale (past max auth age)', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue({
+      id: 1,
+      first_name: 'Alex',
+    });
+    // 25 hours ago — past the 24h MAX_AUTH_AGE_SECONDS window
+    vi.mocked(getAuthDateSeconds).mockReturnValue(
+      Math.floor(Date.now() / 1000) - 25 * 60 * 60,
+    );
+    const res = await ordersGET(req('ok'));
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toMatch(/stale/i);
+  });
+
+  it('returns 401 when initData is from the future (clock skew > 60s)', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue({
+      id: 1,
+      first_name: 'Alex',
+    });
+    // 2 minutes in the future — beyond the 60s clock-skew tolerance
+    vi.mocked(getAuthDateSeconds).mockReturnValue(
+      Math.floor(Date.now() / 1000) + 120,
+    );
+    const res = await ordersGET(req('ok'));
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toMatch(/stale/i);
   });
 
   it('returns orders array with per-order line items and thumbnails', async () => {

@@ -15,6 +15,8 @@ export const runtime = 'nodejs';
 
 // Reject initData older than 24 hours.
 const MAX_AUTH_AGE_SECONDS = 24 * 60 * 60;
+// Tolerate modest client/server clock skew before rejecting future-dated authDate.
+const CLOCK_SKEW_SECONDS = 60;
 
 interface OrderDetail {
   id: number;
@@ -44,9 +46,11 @@ export async function GET(req: Request): Promise<Response> {
   }
 
   const authDate = getAuthDateSeconds(initData);
+  const now = Math.floor(Date.now() / 1000);
   if (
     !authDate ||
-    Math.floor(Date.now() / 1000) - authDate > MAX_AUTH_AGE_SECONDS
+    authDate > now + CLOCK_SKEW_SECONDS ||
+    now - authDate > MAX_AUTH_AGE_SECONDS
   ) {
     return NextResponse.json({ error: 'stale initData' }, { status: 401 });
   }
@@ -74,10 +78,8 @@ export async function GET(req: Request): Promise<Response> {
   try {
     orders = await getCustomerOrders(bcCustomerId, 5);
   } catch (e) {
-    return NextResponse.json(
-      { error: 'orders fetch failed', detail: (e as Error).message },
-      { status: 502 },
-    );
+    console.error('[reorder/orders] BC fetch failed:', (e as Error).message);
+    return NextResponse.json({ error: 'orders fetch failed' }, { status: 502 });
   }
 
   // Per-order details fetched in parallel; tolerate partial failure.
