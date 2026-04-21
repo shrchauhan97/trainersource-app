@@ -30,6 +30,13 @@ function LauncherInner() {
       router.replace(`/mini/calc${qs ? `?${qs}` : ''}`);
       return;
     }
+    if (app === 'partner') {
+      const extra = new URLSearchParams(params.toString());
+      extra.delete('app');
+      const qs = extra.toString();
+      router.replace(`/mini/partner${qs ? `?${qs}` : ''}`);
+      return;
+    }
     setStatus('unavailable');
   }, [app, router, params]);
 
@@ -61,11 +68,14 @@ function LauncherInner() {
       >
         Reconstitution calculator
       </a>
+      <a
+        href="/mini/partner"
+        className="rounded-xl bg-[var(--tg-bg-2,#1e293b)] px-4 py-3 text-base"
+      >
+        Partner dashboard
+      </a>
       <div className="rounded-xl bg-[var(--tg-bg-2,#1e293b)] px-4 py-3 text-base text-[var(--tg-hint,#94a3b8)]">
         Reorder (coming soon)
-      </div>
-      <div className="rounded-xl bg-[var(--tg-bg-2,#1e293b)] px-4 py-3 text-base text-[var(--tg-hint,#94a3b8)]">
-        Partner dashboard (coming soon)
       </div>
     </main>
   );
