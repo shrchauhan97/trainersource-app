@@ -189,3 +189,10 @@ CREATE POLICY trainer_telegram_links_service_role
     FOR ALL TO service_role
     USING (true)
     WITH CHECK (true);
+
+-- === bc_customer_links RLS ===
+-- Service role bypass only — the bot uses service role; no anon/authenticated access.
+ALTER TABLE bc_customer_links ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY bc_customer_links_service_role ON bc_customer_links
+  FOR ALL TO service_role USING (true) WITH CHECK (true);

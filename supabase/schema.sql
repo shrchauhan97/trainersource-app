@@ -329,3 +329,34 @@ ALTER TABLE access_codes
 
 CREATE INDEX IF NOT EXISTS idx_access_codes_trainer_issued
     ON access_codes (trainer_id, issued_via);
+
+-- === bc_customer_links (Peptide Concierge v2 P5 — reorder concierge) ===
+-- Telegram <-> BigCommerce customer link, used by the reorder-concierge cron
+-- to nudge customers who haven't reordered in a while. Bot writes via the
+-- service role key (bypasses RLS).
+--
+-- Column semantics:
+--   last_reminder_at   — timestamp of most recent re-engagement DM; NULL = never reminded.
+--   reminders_ignored  — incremented when a reminder is sent but the user doesn't
+--                        engage within the cooldown window. When it hits 2, the cron
+--                        auto-sets quiet_mode = true.
+--   last_order_id /    — cached from BC so the nightly cron doesn't hit the BC API
+--   last_order_date      for every customer on every run.
+
+CREATE TABLE IF NOT EXISTS bc_customer_links (
+  telegram_user_id    bigint PRIMARY KEY,
+  bc_customer_id      bigint NOT NULL,
+  linked_at           timestamptz NOT NULL DEFAULT now(),
+  quiet_mode          boolean NOT NULL DEFAULT false,
+  last_reminder_at    timestamptz,
+  reminders_ignored   int NOT NULL DEFAULT 0,
+  last_order_id       bigint,
+  last_order_date     date
+);
+
+CREATE INDEX IF NOT EXISTS bc_customer_links_bc_customer_idx
+  ON bc_customer_links (bc_customer_id);
+
+CREATE INDEX IF NOT EXISTS bc_customer_links_reengage_idx
+  ON bc_customer_links (last_reminder_at)
+  WHERE quiet_mode = false;
