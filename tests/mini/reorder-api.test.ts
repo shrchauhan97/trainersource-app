@@ -45,8 +45,10 @@ import {
   getCustomerOrders,
   getOrderProducts,
   getProductImages,
+  createCart,
 } from '@/lib/bc-rest-client';
 import { GET as ordersGET } from '@/app/api/reorder/orders/route';
+import { POST as checkoutPOST } from '@/app/api/reorder/checkout/route';
 
 function req(initData: string): Request {
   return new Request('http://localhost/api/reorder/orders', {
@@ -209,5 +211,161 @@ describe('GET /api/reorder/orders', () => {
     const body = await res.json();
     expect(body.orders).toHaveLength(1);
     expect(body.orders[0].id).toBe(111);
+  });
+});
+
+function checkoutReq(initData: string, body: unknown): Request {
+  return new Request('http://localhost/api/reorder/checkout', {
+    method: 'POST',
+    headers: {
+      'X-Telegram-Init-Data': initData,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+describe('POST /api/reorder/checkout', () => {
+  beforeEach(() => {
+    process.env.BC_CLIENT_ID = 'test_client_id';
+    process.env.BC_CLIENT_SECRET = 'test_secret_long_enough_for_hs256';
+    process.env.BIGCOMMERCE_STORE_HASH = 'yemcm3khpa';
+    process.env.BC_STORE_URL = 'https://ultimate-peptides.com';
+  });
+
+  it('401 when initData invalid', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue(null);
+    const res = await checkoutPOST(
+      checkoutReq('bad', { selected_order_ids: [111] }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it('400 when body is empty or malformed', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue({
+      id: 1,
+      first_name: 'A',
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { bc_customer_id: 42 },
+      error: null,
+    });
+    const res = await checkoutPOST(checkoutReq('ok', { foo: 'bar' }));
+    expect(res.status).toBe(400);
+  });
+
+  it('400 when selected_order_ids is empty', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue({
+      id: 1,
+      first_name: 'A',
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { bc_customer_id: 42 },
+      error: null,
+    });
+    const res = await checkoutPOST(
+      checkoutReq('ok', { selected_order_ids: [] }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it('403 when an order belongs to a different customer', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue({
+      id: 1,
+      first_name: 'A',
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { bc_customer_id: 42 },
+      error: null,
+    });
+    vi.mocked(getCustomerOrders).mockResolvedValue([
+      {
+        id: 999, // the customer's actual orders — 111 is not in the set
+        date_created: '',
+        total_inc_tax: '0',
+        status: 'x',
+        customer_id: 42,
+      },
+    ]);
+    const res = await checkoutPOST(
+      checkoutReq('ok', { selected_order_ids: [111] }),
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('aggregates line items across orders and returns checkout_url', async () => {
+    vi.mocked(verifyTelegramWebApp).mockReturnValue({
+      id: 1,
+      first_name: 'A',
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { bc_customer_id: 42 },
+      error: null,
+    });
+    vi.mocked(getCustomerOrders).mockResolvedValue([
+      {
+        id: 111,
+        date_created: '',
+        total_inc_tax: '0',
+        status: 'x',
+        customer_id: 42,
+      },
+      {
+        id: 222,
+        date_created: '',
+        total_inc_tax: '0',
+        status: 'x',
+        customer_id: 42,
+      },
+    ]);
+    vi.mocked(getOrderProducts)
+      .mockResolvedValueOnce([
+        {
+          id: 1,
+          product_id: 30,
+          name: 'X',
+          sku: 'UP-BPC157',
+          quantity: 2,
+          base_price: '90',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 2,
+          product_id: 30,
+          name: 'X',
+          sku: 'UP-BPC157',
+          quantity: 1,
+          base_price: '90',
+        },
+        {
+          id: 3,
+          product_id: 31,
+          name: 'Y',
+          sku: 'UP-BACWATER',
+          quantity: 1,
+          base_price: '35',
+        },
+      ]);
+    vi.mocked(createCart).mockResolvedValue({
+      id: 'cart-xyz',
+      customer_id: 42,
+      line_items: [],
+    });
+
+    const res = await checkoutPOST(
+      checkoutReq('ok', { selected_order_ids: [111, 222] }),
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.checkout_url).toMatch(
+      /^https:\/\/ultimate-peptides\.com\/login\/token\/[A-Za-z0-9_\-.]+$/,
+    );
+    // Aggregation — UP-BPC157 qty 2+1=3
+    const call = vi.mocked(createCart).mock.calls[0][0];
+    const bpc = call.line_items.find((l) => l.sku === 'UP-BPC157');
+    expect(bpc?.quantity).toBe(3);
+    const bac = call.line_items.find((l) => l.sku === 'UP-BACWATER');
+    expect(bac?.quantity).toBe(1);
   });
 });
