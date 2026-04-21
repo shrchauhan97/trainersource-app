@@ -9,9 +9,9 @@ import {
 } from '@/lib/reconstitution';
 import SyringeVisualization from './SyringeVisualization';
 
-// Neutral how-to link — channel-level placeholder until a curated walkthrough
-// is seeded (Plan 1 Task 17). No creator attribution in the label.
-const RECONSTITUTION_VIDEO_URL = 'https://www.youtube.com/@SmashRx';
+// Marek Health's "How To Reconstitute And Inject Peptides" — reputable clinic,
+// topic-specific end-to-end. ?t=0 because whole video is on-topic.
+const RECONSTITUTION_VIDEO_URL = 'https://www.youtube.com/watch?v=tcEWjyQfDLc';
 
 const DEFAULT_SKU = 'UP-BPC157';
 const DEFAULT_WATER_ML = 2;
