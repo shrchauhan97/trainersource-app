@@ -193,7 +193,7 @@ export default function ReorderPage() {
       {state.kind === 'not-linked' ? (
         <EmptyState
           title="Not linked yet"
-          body="Go back to @peptidebutlerbot and run /start — you'll be prompted to connect your Ultimate Peptides account. Then reopen this Mini App."
+          body="Go back to @peptidebutlerbot and run /link to connect your Ultimate Peptides account. Then reopen this Mini App."
         />
       ) : null}
 
