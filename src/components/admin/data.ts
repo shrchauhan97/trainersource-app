@@ -872,3 +872,23 @@ export async function getCustomerDetail(customerId: string): Promise<{
     })),
   };
 }
+
+export async function getTrainerLifecycleEvents(trainerId: string) {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from('lifecycle_events')
+    .select('id, from_status, to_status, reason_category, reason_note, created_at, admins(name)')
+    .eq('entity_type', 'trainer')
+    .eq('entity_id', trainerId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((e: any) => ({
+    id: e.id,
+    from_status: e.from_status as string | null,
+    to_status: e.to_status as string,
+    reason_category: e.reason_category as string,
+    reason_note: e.reason_note as string | null,
+    created_at: e.created_at as string,
+    actor_name: (e.admins?.name as string | undefined) ?? 'unknown',
+  }));
+}

@@ -278,51 +278,6 @@ export async function changeTrainerStatus(formData: FormData): Promise<void> {
   revalidateAdminPages(`/admin/trainers/${trainerId}`);
 }
 
-export async function deleteTrainer(formData: FormData): Promise<void> {
-  const supabase = await requireAdmin();
-
-  const trainerId = asString(formData.get('trainerId'));
-
-  if (!trainerId) {
-    throw new Error('Trainer id is required.');
-  }
-
-  const [customersResult, ordersResult, commissionsResult, payoutsResult, codesResult] =
-    await Promise.all([
-      supabase.from('customers').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId),
-      supabase.from('orders').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId),
-      supabase.from('commissions').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId),
-      supabase.from('payouts').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId),
-      supabase.from('access_codes').select('id', { count: 'exact', head: true }).eq('trainer_id', trainerId),
-    ]);
-
-  for (const result of [customersResult, ordersResult, commissionsResult, payoutsResult, codesResult]) {
-    if (result.error) {
-      throw result.error;
-    }
-  }
-
-  const dependencyCount =
-    Number(customersResult.count ?? 0) +
-    Number(ordersResult.count ?? 0) +
-    Number(commissionsResult.count ?? 0) +
-    Number(payoutsResult.count ?? 0) +
-    Number(codesResult.count ?? 0);
-
-  if (dependencyCount > 0) {
-    throw new Error('Trainer cannot be deleted while related customers, orders, commissions, payouts, or codes exist.');
-  }
-
-  const { error } = await supabase.from('trainers').delete().eq('id', trainerId);
-
-  if (error) {
-    throw error;
-  }
-
-  revalidateAdminPages();
-  redirect('/admin/trainers');
-}
-
 export async function approveSelectedCommissions(formData: FormData): Promise<void> {
   const supabase = await requireAdmin();
 
