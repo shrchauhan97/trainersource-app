@@ -14,6 +14,7 @@ vi.mock('next/cache', () => ({
 
 import { suspendCustomer } from '@/app/admin/actions';
 import { removeCustomer } from '@/app/admin/actions';
+import { suspendTrainer, removeTrainer } from '@/app/admin/actions';
 
 beforeEach(() => { vi.clearAllMocks(); });
 
@@ -105,5 +106,84 @@ describe('removeCustomer', () => {
     expect(tables).toContain('access_codes:update');
     expect(tables).toContain('bc_customer_links:delete');
     expect(tables).toContain('lifecycle_events:insert');
+  });
+});
+
+describe('suspendTrainer', () => {
+  it('sets trainers.status=suspended and logs event', async () => {
+    const calls: Array<{ table: string; op: string }> = [];
+    mockFrom.mockImplementation((table: string) => {
+      const chain: any = {
+        select: () => chain, eq: () => chain,
+        update: () => { calls.push({ table, op: 'update' }); return chain; },
+        insert: () => { calls.push({ table, op: 'insert' }); return Promise.resolve({ error: null }); },
+        maybeSingle: () => Promise.resolve({
+          data: table === 'admins'
+            ? { id: 'a1', email: 'x', name: 'X', role: 'superadmin' }
+            : { id: 't1', status: 'active' },
+          error: null,
+        }),
+      };
+      return chain;
+    });
+    const form = new FormData();
+    form.set('trainerId', 't1');
+    form.set('reasonCategory', 'compliance');
+    await suspendTrainer(form);
+    expect(calls.find((c) => c.table === 'trainers' && c.op === 'update')).toBeDefined();
+    expect(calls.find((c) => c.table === 'lifecycle_events' && c.op === 'insert')).toBeDefined();
+  });
+
+  it('refuses non-superadmin', async () => {
+    mockFrom.mockImplementation(() => ({
+      select: () => ({ eq: () => ({ maybeSingle: () =>
+        Promise.resolve({ data: { id: 'a1', email: 'x', name: 'X', role: 'admin' }, error: null })
+      }) }),
+    }));
+    const form = new FormData();
+    form.set('trainerId', 't1');
+    form.set('reasonCategory', 'other');
+    await expect(suspendTrainer(form)).rejects.toThrow('not-superadmin');
+  });
+});
+
+describe('removeTrainer', () => {
+  it('requires confirm phrase REMOVE', async () => {
+    mockFrom.mockImplementation(() => ({
+      select: () => ({ eq: () => ({ maybeSingle: () =>
+        Promise.resolve({ data: { id: 'a1', email: 'x', name: 'X', role: 'superadmin' }, error: null })
+      }) }),
+    }));
+    const form = new FormData();
+    form.set('trainerId', 't1');
+    form.set('reasonCategory', 'fraud');
+    form.set('confirm', 'delete');
+    await expect(removeTrainer(form)).rejects.toThrow('confirm-mismatch');
+  });
+
+  it('revokes active access codes and logs to_status=removed', async () => {
+    const calls: Array<{ table: string; op: string }> = [];
+    mockFrom.mockImplementation((table: string) => {
+      const chain: any = {
+        select: () => chain, eq: () => chain, in: () => chain,
+        update: () => { calls.push({ table, op: 'update' }); return chain; },
+        insert: (args: unknown) => { calls.push({ table, op: 'insert' }); (chain as any)._last = args; return Promise.resolve({ error: null }); },
+        maybeSingle: () => Promise.resolve({
+          data: table === 'admins'
+            ? { id: 'a1', email: 'x', name: 'X', role: 'superadmin' }
+            : { id: 't1', status: 'active' },
+          error: null,
+        }),
+      };
+      return chain;
+    });
+    const form = new FormData();
+    form.set('trainerId', 't1');
+    form.set('reasonCategory', 'fraud');
+    form.set('confirm', 'REMOVE');
+    await removeTrainer(form);
+    expect(calls.some((c) => c.table === 'trainers' && c.op === 'update')).toBe(true);
+    expect(calls.some((c) => c.table === 'access_codes' && c.op === 'update')).toBe(true);
+    expect(calls.some((c) => c.table === 'lifecycle_events' && c.op === 'insert')).toBe(true);
   });
 });

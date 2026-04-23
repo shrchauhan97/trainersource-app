@@ -653,3 +653,74 @@ export async function removeCustomer(form: FormData): Promise<void> {
   revalidatePath(`/admin/customers/${customerId}`);
   revalidatePath('/admin/customers');
 }
+
+export async function suspendTrainer(form: FormData): Promise<void> {
+  const email = await getCurrentAdminEmail();
+  const supabase = createServiceClient();
+  const admin = await requireSuperadmin(supabase, email);
+
+  const trainerId = String(form.get('trainerId') ?? '');
+  if (!trainerId) throw new Error('trainer-id-required');
+  const { category, note } = readReason(form);
+
+  const { data: before } = await supabase
+    .from('trainers').select('id, status').eq('id', trainerId).maybeSingle();
+  if (!before) throw new Error('trainer-not-found');
+  if (before.status === 'suspended') return;
+
+  await supabase.from('trainers').update({ status: 'suspended' }).eq('id', trainerId);
+
+  await writeLifecycleEvent(supabase, {
+    entityType: 'trainer',
+    entityId: trainerId,
+    fromStatus: before.status,
+    toStatus: 'suspended',
+    actorAdminId: admin.id,
+    reasonCategory: category,
+    reasonNote: note,
+  });
+
+  revalidatePath(`/admin/trainers/${trainerId}`);
+  revalidatePath('/admin/trainers');
+}
+
+export async function removeTrainer(form: FormData): Promise<void> {
+  const email = await getCurrentAdminEmail();
+  const supabase = createServiceClient();
+  const admin = await requireSuperadmin(supabase, email);
+
+  const trainerId = String(form.get('trainerId') ?? '');
+  if (!trainerId) throw new Error('trainer-id-required');
+  const confirm = String(form.get('confirm') ?? '');
+  if (confirm !== 'REMOVE') throw new Error('confirm-mismatch');
+  const { category, note } = readReason(form);
+
+  const { data: before } = await supabase
+    .from('trainers').select('id, status').eq('id', trainerId).maybeSingle();
+  if (!before) throw new Error('trainer-not-found');
+
+  // Trainers stay in the DB (commissions/orders reference them) — flip to suspended.
+  // Audit log records intent='removed' even though column stays 'suspended'; trainer_status enum
+  // has no 'removed' value because existing commissions/orders need the FK intact.
+  await supabase.from('trainers').update({ status: 'suspended' }).eq('id', trainerId);
+
+  // Revoke any unconsumed access codes so no new clients can onboard under this trainer.
+  await supabase
+    .from('access_codes')
+    .update({ status: 'revoked' })
+    .eq('trainer_id', trainerId)
+    .eq('status', 'active');
+
+  await writeLifecycleEvent(supabase, {
+    entityType: 'trainer',
+    entityId: trainerId,
+    fromStatus: before.status,
+    toStatus: 'removed',
+    actorAdminId: admin.id,
+    reasonCategory: category,
+    reasonNote: note,
+  });
+
+  revalidatePath(`/admin/trainers/${trainerId}`);
+  revalidatePath('/admin/trainers');
+}
