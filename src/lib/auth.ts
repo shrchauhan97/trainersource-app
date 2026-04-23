@@ -2,7 +2,7 @@ import type { User } from '@supabase/supabase-js';
 
 import { createClient } from '@/lib/supabase/server';
 
-export type AppUserRole = 'admin' | 'trainer' | 'unauthorized';
+export type AppUserRole = 'admin' | 'trainer' | 'suspended' | 'unauthorized';
 
 export async function getCurrentUser(): Promise<User | null> {
   const supabase = await createClient();
@@ -49,7 +49,6 @@ export async function getUserRole(email?: string | null): Promise<AppUserRole> {
     .from('trainers')
     .select('id, status')
     .eq('email', normalizedEmail)
-    .eq('status', 'active')
     .maybeSingle();
 
   if (trainerError) {
@@ -57,7 +56,13 @@ export async function getUserRole(email?: string | null): Promise<AppUserRole> {
   }
 
   if (trainer) {
-    return 'trainer';
+    if (trainer.status === 'suspended') {
+      return 'suspended';
+    }
+
+    if (trainer.status === 'active') {
+      return 'trainer';
+    }
   }
 
   return 'unauthorized';
