@@ -892,3 +892,25 @@ export async function getTrainerLifecycleEvents(trainerId: string) {
     actor_name: (e.admins?.name as string | undefined) ?? 'unknown',
   }));
 }
+
+export async function getRecentLifecycleEvents(limit = 200) {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from('lifecycle_events')
+    .select('id, entity_type, entity_id, from_status, to_status, reason_category, reason_note, created_at, admins(name, email)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((e: any) => ({
+    id: e.id as string,
+    entity_type: e.entity_type as 'customer' | 'trainer' | 'access_code',
+    entity_id: e.entity_id as string,
+    from_status: e.from_status as string | null,
+    to_status: e.to_status as string,
+    reason_category: e.reason_category as string,
+    reason_note: e.reason_note as string | null,
+    created_at: e.created_at as string,
+    actor_name: (e.admins?.name as string | undefined) ?? 'unknown',
+    actor_email: (e.admins?.email as string | undefined) ?? '',
+  }));
+}
