@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -11,45 +11,76 @@ function isValidApp(value: string | null): value is App {
   return value !== null && (VALID_APPS as readonly string[]).includes(value);
 }
 
+type Haptic = { impactOccurred: (style: string) => void };
 type TelegramWebApp = {
   close: () => void;
-  HapticFeedback?: { impactOccurred: (style: string) => void };
+  HapticFeedback?: Haptic;
 };
 
-function closeMiniApp() {
-  const tg = (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } })
+function getTg(): TelegramWebApp | undefined {
+  return (window as unknown as { Telegram?: { WebApp?: TelegramWebApp } })
     .Telegram?.WebApp;
-  tg?.HapticFeedback?.impactOccurred('light');
-  tg?.close();
+}
+
+function tapHaptic() {
+  getTg()?.HapticFeedback?.impactOccurred('light');
 }
 
 type Tile = {
-  href: string;
+  slug: App;
   title: string;
   desc: string;
   glyph: string;
+  accent: 'gold' | 'teal' | 'rust';
 };
 
 const MINI_APP_TILES: Tile[] = [
   {
-    href: '/mini/calc',
+    slug: 'calc',
     title: 'Reconstitution calculator',
     desc: 'Dose math on a U-100 insulin syringe',
     glyph: '⚗',
+    accent: 'gold',
   },
   {
-    href: '/mini/partner',
+    slug: 'partner',
     title: 'Partner dashboard',
-    desc: 'Earnings, codes, toolkit',
+    desc: 'Earnings, referral codes, toolkit',
     glyph: '◆',
+    accent: 'teal',
   },
   {
-    href: '/mini/reorder',
+    slug: 'reorder',
     title: 'Reorder',
     desc: 'Past orders, one-tap checkout',
     glyph: '↻',
+    accent: 'rust',
   },
 ];
+
+const ACCENT: Record<
+  Tile['accent'],
+  { bg: string; fg: string; border: string; glow: string }
+> = {
+  gold: {
+    bg: 'linear-gradient(135deg, #e6c875 0%, #cc8218 100%)',
+    fg: '#14202b',
+    border: '#cc8218',
+    glow: 'rgba(204, 130, 24, 0.18)',
+  },
+  teal: {
+    bg: 'linear-gradient(135deg, #2db5a3 0%, #259a8a 100%)',
+    fg: '#06281f',
+    border: '#259a8a',
+    glow: 'rgba(45, 181, 163, 0.18)',
+  },
+  rust: {
+    bg: 'linear-gradient(135deg, #c95c2d 0%, #671800 100%)',
+    fg: '#fff',
+    border: '#92400e',
+    glow: 'rgba(201, 92, 45, 0.18)',
+  },
+};
 
 type SlashCommand = { cmd: string; desc: string };
 
@@ -73,6 +104,7 @@ function LauncherInner() {
   const [status, setStatus] = useState<'routing' | 'menu' | 'unavailable'>(
     'routing',
   );
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isValidApp(app)) {
@@ -85,10 +117,36 @@ function LauncherInner() {
     router.replace(`/mini/${app}${qs ? `?${qs}` : ''}`);
   }, [app, router, params]);
 
+  const openTile = useCallback(
+    (slug: App) => {
+      tapHaptic();
+      router.push(`/mini/${slug}`);
+    },
+    [router],
+  );
+
+  const runCommand = useCallback(async (cmd: string) => {
+    tapHaptic();
+    try {
+      await navigator.clipboard.writeText(cmd);
+    } catch {
+      // clipboard may be blocked — still close so user can type manually
+    }
+    setToast(`${cmd} copied — paste in chat`);
+    window.setTimeout(() => {
+      getTg()?.close();
+    }, 700);
+  }, []);
+
+  const closeAndChat = useCallback(() => {
+    tapHaptic();
+    getTg()?.close();
+  }, []);
+
   if (status === 'routing') {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
-        <p className="text-sm text-[#b8a26a]">Loading…</p>
+      <main className="flex min-h-screen items-center justify-center bg-[#14202b]">
+        <p className="text-sm text-[#94a3b8]">Loading…</p>
       </main>
     );
   }
@@ -97,7 +155,7 @@ function LauncherInner() {
     return (
       <main className="mx-auto max-w-md px-5 py-10 text-center">
         <h1 className="text-lg font-semibold text-[#e6c875]">Coming soon</h1>
-        <p className="mt-2 text-sm text-[#b8a26a]">
+        <p className="mt-2 text-sm text-[#94a3b8]">
           This Mini App is still under construction. Check back shortly.
         </p>
       </main>
@@ -105,72 +163,86 @@ function LauncherInner() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-5 pb-10 pt-8">
-      <header className="flex flex-col items-center gap-3 pb-6">
+    <main className="mx-auto max-w-md px-5 pb-10 pt-7">
+      <header className="flex flex-col items-center gap-2 pb-7">
         <Image
-          src="/assets/ultimate-peptides-logo.jpg"
+          src="/assets/up-logo-transparent.png"
           alt="Ultimate Peptides"
-          width={260}
-          height={104}
+          width={320}
+          height={135}
           priority
-          className="h-auto w-[220px] object-contain"
-          style={{ mixBlendMode: 'screen' }}
+          className="h-auto w-[230px] object-contain"
         />
-        <p className="text-xs uppercase tracking-[0.28em] text-[#b8a26a]">
+        <p className="text-[10px] uppercase tracking-[0.36em] text-[#cc8218]">
           Concierge
         </p>
       </header>
 
-      <section className="grid grid-cols-1 gap-3">
-        {MINI_APP_TILES.map((tile) => (
-          <a
-            key={tile.href}
-            href={tile.href}
-            className="group relative overflow-hidden rounded-2xl border border-[#3a2d14] bg-gradient-to-br from-[#141008] to-[#0a0a0a] px-5 py-4 transition-colors hover:border-[#c9a24a]"
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#c9a24a] to-[#8a6e2b] text-xl text-[#0a0a0a]">
-                <span aria-hidden>{tile.glyph}</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-base font-semibold text-[#f4e9cf]">
-                  {tile.title}
+      <section className="flex flex-col gap-3">
+        {MINI_APP_TILES.map((tile) => {
+          const accent = ACCENT[tile.accent];
+          return (
+            <button
+              key={tile.slug}
+              type="button"
+              onClick={() => openTile(tile.slug)}
+              className="group relative overflow-hidden rounded-2xl border border-[#243444] bg-[#1a2a3a] px-5 py-4 text-left transition-all active:scale-[0.99] active:bg-[#1e3145]"
+              style={{ boxShadow: `0 1px 0 0 ${accent.glow} inset` }}
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl"
+                  style={{
+                    background: accent.bg,
+                    color: accent.fg,
+                    border: `1px solid ${accent.border}`,
+                  }}
+                >
+                  <span aria-hidden>{tile.glyph}</span>
                 </div>
-                <div className="text-xs text-[#b8a26a]">{tile.desc}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-base font-semibold text-[#f8fafc]">
+                    {tile.title}
+                  </div>
+                  <div className="text-xs text-[#94a3b8]">{tile.desc}</div>
+                </div>
+                <span
+                  aria-hidden
+                  className="text-lg text-[#597083] transition-colors group-hover:text-[#cc8218]"
+                >
+                  ›
+                </span>
               </div>
-              <span
-                aria-hidden
-                className="text-lg text-[#c9a24a] opacity-60 transition-opacity group-hover:opacity-100"
-              >
-                ›
-              </span>
-            </div>
-          </a>
-        ))}
+            </button>
+          );
+        })}
       </section>
 
       <section className="mt-8">
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#c9a24a]">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#cc8218]">
             Slash commands
           </h2>
-          <span className="text-[10px] uppercase tracking-widest text-[#6b5a30]">
-            Tap to return to chat
+          <span className="text-[10px] uppercase tracking-widest text-[#597083]">
+            Tap to copy
           </span>
         </div>
-        <ul className="divide-y divide-[#1e1810] rounded-2xl border border-[#3a2d14] bg-[#0f0b05]">
+        <ul className="divide-y divide-[#243444] overflow-hidden rounded-2xl border border-[#243444] bg-[#1a2a3a]">
           {SLASH_COMMANDS.map((item) => (
             <li key={item.cmd}>
               <button
                 type="button"
-                onClick={closeMiniApp}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[#16110a]"
+                onClick={() => runCommand(item.cmd)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors active:bg-[#1e3145]"
               >
-                <code className="min-w-[92px] rounded-md bg-[#1e1810] px-2 py-0.5 font-mono text-[12px] text-[#e6c875]">
+                <code className="min-w-[96px] rounded-md border border-[#2f4459] bg-[#14202b] px-2 py-0.5 font-mono text-[12px] text-[#e6c875]">
                   {item.cmd}
                 </code>
-                <span className="flex-1 text-xs text-[#d6c48a]">
+                <span className="flex-1 text-xs text-[#cbd5e1]">
                   {item.desc}
+                </span>
+                <span className="text-xs text-[#597083]" aria-hidden>
+                  ⧉
                 </span>
               </button>
             </li>
@@ -180,15 +252,32 @@ function LauncherInner() {
 
       <button
         type="button"
-        onClick={closeMiniApp}
-        className="mt-6 w-full rounded-2xl border border-[#c9a24a] bg-gradient-to-br from-[#c9a24a] to-[#8a6e2b] px-5 py-3 text-sm font-semibold text-[#0a0a0a] transition-opacity hover:opacity-90"
+        onClick={closeAndChat}
+        className="mt-7 w-full rounded-2xl px-5 py-3.5 text-sm font-semibold transition-opacity active:opacity-80"
+        style={{
+          background: 'linear-gradient(135deg, #e6c875 0%, #cc8218 100%)',
+          color: '#14202b',
+          boxShadow: '0 1px 0 rgba(255, 255, 255, 0.15) inset',
+        }}
       >
-        Ask the concierge anything
+        Ask the concierge anything →
       </button>
 
-      <footer className="mt-8 text-center text-[10px] uppercase tracking-[0.24em] text-[#6b5a30]">
+      <footer className="mt-8 text-center text-[10px] uppercase tracking-[0.24em] text-[#597083]">
         Research use only · Ultimate Peptides
       </footer>
+
+      {toast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-0 bottom-8 z-50 flex justify-center px-4"
+        >
+          <div className="rounded-full border border-[#cc8218] bg-[#14202b] px-4 py-2 text-xs font-medium text-[#e6c875] shadow-lg">
+            {toast}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -197,8 +286,8 @@ export default function LauncherPage() {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
-          <p className="text-sm text-[#b8a26a]">Loading…</p>
+        <main className="flex min-h-screen items-center justify-center bg-[#14202b]">
+          <p className="text-sm text-[#94a3b8]">Loading…</p>
         </main>
       }
     >

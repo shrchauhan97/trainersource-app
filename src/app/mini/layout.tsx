@@ -6,12 +6,12 @@ export const metadata = {
 };
 
 // The root layout renders a global compliance footer. We hide it for mini routes
-// so the WebView feels like a native Telegram sheet. We also pin the backdrop
-// to Ultimate Peptides black so the brand holds regardless of the user's
-// Telegram skin — the tg vars still apply to interactive surfaces.
+// so the WebView feels like a native Telegram sheet. Backdrop pins to UP deep
+// slate (#14202b) — a darker relative of the storefront's #2F3C4E — so the
+// content card reads as a premium floating panel over the chat context.
 const HIDE_ROOT_CHROME = `
   body > footer { display: none !important; }
-  body { background: #0a0a0a !important; }
+  body { background: #14202b !important; }
 `;
 
 export default function MiniAppLayout({
@@ -25,7 +25,7 @@ export default function MiniAppLayout({
         strategy="beforeInteractive"
       />
       <MiniAppThemeBridge />
-      <div className="min-h-screen bg-[#0a0a0a] text-[#f4e9cf] antialiased">
+      <div className="min-h-screen bg-[#14202b] text-[#e8eefa] antialiased">
         {children}
       </div>
     </>
