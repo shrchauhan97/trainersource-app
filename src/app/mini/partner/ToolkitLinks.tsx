@@ -32,14 +32,16 @@ export default function ToolkitLinks() {
   }
 
   return (
-    <section className="rounded-2xl border border-[var(--tg-hint,#999)]/20 p-4">
-      <h2 className="text-sm font-bold uppercase tracking-wider opacity-60">Toolkit</h2>
+    <section className="rounded-2xl border border-[#243444] bg-[#1a2a3a] p-4">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#cc8218]">
+        Toolkit
+      </h2>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {ITEMS.map((item) => (
           <button
             key={item.href}
             onClick={() => openPdf(item.href)}
-            className="rounded-xl border border-[var(--tg-hint,#999)]/25 p-3 text-left text-sm hover:bg-[var(--tg-secondary-bg,#f5f5f7)]"
+            className="rounded-xl border border-[#2f4459] bg-[#14202b] p-3 text-left text-sm text-[#cbd5e1] transition-colors active:border-[#cc8218] active:bg-[#1e3145]"
           >
             {item.label}
           </button>

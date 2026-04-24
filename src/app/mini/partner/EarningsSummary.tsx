@@ -30,19 +30,27 @@ type Props = {
 
 export default function EarningsSummary({ earnings }: Props) {
   return (
-    <section className="rounded-2xl border border-[var(--tg-hint,#999)]/20 bg-[var(--tg-secondary-bg,#f5f5f7)] p-4">
-      <h2 className="text-sm font-bold uppercase tracking-wider opacity-60">This period</h2>
+    <section className="rounded-2xl border border-[#243444] bg-[#1a2a3a] p-4">
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[#cc8218]">
+        This period
+      </h2>
       <div className="mt-3 grid grid-cols-2 gap-3">
         <div>
-          <p className="text-xs opacity-60">Pending</p>
-          <p className="text-2xl font-black">{formatCurrency(earnings.pending)}</p>
+          <p className="text-xs text-[#94a3b8]">Pending</p>
+          <p className="text-2xl font-black text-[#e6c875]">
+            {formatCurrency(earnings.pending)}
+          </p>
         </div>
         <div>
-          <p className="text-xs opacity-60">Paid (last)</p>
-          <p className="text-2xl font-black">{formatCurrency(earnings.paid)}</p>
+          <p className="text-xs text-[#94a3b8]">Paid (last)</p>
+          <p className="text-2xl font-black text-[#2db5a3]">
+            {formatCurrency(earnings.paid)}
+          </p>
         </div>
       </div>
-      <p className="mt-3 text-xs opacity-70">Next payout: {nextPayoutLabel()}</p>
+      <p className="mt-3 text-xs text-[#94a3b8]">
+        Next payout: <span className="text-[#cbd5e1]">{nextPayoutLabel()}</span>
+      </p>
     </section>
   );
 }

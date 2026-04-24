@@ -7,6 +7,7 @@ import {
   formatMl,
   formatUnits,
 } from '@/lib/reconstitution';
+import MiniAppBackButton from '../MiniAppBackButton';
 import SyringeVisualization from './SyringeVisualization';
 
 // Marek Health's "How To Reconstitute And Inject Peptides" — reputable clinic,
@@ -35,6 +36,7 @@ export default function CalculatorPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-5 flex flex-col gap-5">
+      <MiniAppBackButton />
       <header className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold">Reconstitution Calculator</h1>
         <p className="text-sm text-[var(--tg-hint,#94a3b8)]">

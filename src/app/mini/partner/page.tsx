@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import MiniAppBackButton from '../MiniAppBackButton';
 import CodesList from './CodesList';
 import EarningsSummary from './EarningsSummary';
 import ToolkitLinks from './ToolkitLinks';
@@ -86,15 +87,17 @@ export default function PartnerDashboardPage() {
   }, [refreshTick]);
 
   return (
-    <main className="min-h-screen bg-[var(--tg-bg,#fff)] text-[var(--tg-fg,#111)] p-4">
+    <main className="min-h-screen bg-[#14202b] text-[#e8eefa] p-5">
+      <MiniAppBackButton />
+
       {state.kind === 'loading' && (
-        <div className="pt-24 text-center text-sm opacity-70">Loading dashboard…</div>
+        <div className="pt-24 text-center text-sm text-[#94a3b8]">Loading dashboard…</div>
       )}
 
       {state.kind === 'no-telegram' && (
         <div className="pt-12 text-center space-y-2">
-          <p className="text-base font-semibold">Open from Telegram</p>
-          <p className="text-sm opacity-70">
+          <p className="text-base font-semibold text-[#f8fafc]">Open from Telegram</p>
+          <p className="text-sm text-[#94a3b8]">
             This page only works inside the Ultimate Peptides concierge Mini App. Send
             /dashboard to the bot to open it.
           </p>
@@ -103,14 +106,18 @@ export default function PartnerDashboardPage() {
 
       {state.kind === 'not-linked' && (
         <div className="pt-12 text-center space-y-3">
-          <p className="text-base font-semibold">Trainer account not linked</p>
-          <p className="text-sm opacity-70 max-w-xs mx-auto">
+          <p className="text-base font-semibold text-[#f8fafc]">Trainer account not linked</p>
+          <p className="text-sm text-[#94a3b8] max-w-xs mx-auto">
             Connect this Telegram account to your TrainerSource profile first. Send /iamtrainer to
             the bot, or link from the portal.
           </p>
           <button
             onClick={() => getTg()?.openLink(portalUrl())}
-            className="mt-2 rounded-full bg-[var(--tg-button,#2481CC)] text-[var(--tg-button-text,#fff)] px-5 py-2 text-sm font-semibold"
+            className="mt-2 rounded-full px-5 py-2 text-sm font-semibold"
+            style={{
+              background: 'linear-gradient(135deg, #e6c875 0%, #cc8218 100%)',
+              color: '#14202b',
+            }}
           >
             Open full portal
           </button>
@@ -119,14 +126,14 @@ export default function PartnerDashboardPage() {
 
       {state.kind === 'error' && (
         <div className="pt-12 text-center space-y-2">
-          <p className="text-base font-semibold">Couldn&apos;t load dashboard</p>
-          <p className="text-xs opacity-60 font-mono break-all">{state.message}</p>
+          <p className="text-base font-semibold text-[#f8fafc]">Couldn&apos;t load dashboard</p>
+          <p className="text-xs text-[#94a3b8] font-mono break-all">{state.message}</p>
           <button
             onClick={() => {
               setState({ kind: 'loading' });
               setRefreshTick((t) => t + 1);
             }}
-            className="mt-3 rounded-full bg-[var(--tg-button,#2481CC)] text-[var(--tg-button-text,#fff)] px-4 py-1.5 text-sm"
+            className="mt-3 rounded-full border border-[#cc8218] bg-transparent text-[#e6c875] px-4 py-1.5 text-sm"
           >
             Retry
           </button>
@@ -134,10 +141,13 @@ export default function PartnerDashboardPage() {
       )}
 
       {state.kind === 'ready' && (
-        <div className="space-y-6 max-w-md mx-auto">
+        <div className="space-y-5 max-w-md mx-auto">
           <header>
-            <h1 className="text-xl font-bold">TrainerSource</h1>
-            <p className="text-sm opacity-70">{state.data.trainer.name}</p>
+            <p className="text-[10px] uppercase tracking-[0.36em] text-[#cc8218]">
+              Partner
+            </p>
+            <h1 className="text-xl font-bold text-[#f8fafc] mt-1">TrainerSource</h1>
+            <p className="text-sm text-[#94a3b8]">{state.data.trainer.name}</p>
           </header>
 
           <EarningsSummary earnings={state.data.earnings} />
@@ -150,13 +160,13 @@ export default function PartnerDashboardPage() {
 
           <button
             onClick={() => getTg()?.openLink(portalUrl(), { try_instant_view: false })}
-            className="w-full rounded-xl border border-[var(--tg-hint,#999)]/30 py-3 text-sm font-semibold"
+            className="w-full rounded-2xl border border-[#243444] bg-[#1a2a3a] text-[#e8eefa] py-3 text-sm font-semibold active:bg-[#1e3145]"
           >
             Open full portal
           </button>
 
           {state.data.recruitment.unlocked && (
-            <p className="text-xs text-center opacity-60">
+            <p className="text-xs text-center text-[#94a3b8]">
               Recruitment tier unlocked ({state.data.recruitment.consumedCount}/
               {state.data.recruitment.threshold})
             </p>

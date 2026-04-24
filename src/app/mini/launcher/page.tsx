@@ -14,6 +14,7 @@ function isValidApp(value: string | null): value is App {
 type Haptic = { impactOccurred: (style: string) => void };
 type TelegramWebApp = {
   close: () => void;
+  openTelegramLink?: (url: string) => void;
   HapticFeedback?: Haptic;
 };
 
@@ -24,6 +25,25 @@ function getTg(): TelegramWebApp | undefined {
 
 function tapHaptic() {
   getTg()?.HapticFeedback?.impactOccurred('light');
+}
+
+// Slash commands aren't natively fireable from a menu-button Mini App, but
+// `t.me/<bot>?start=cmd_<name>` is: Telegram closes the Mini App, opens the
+// chat, and sends `/start cmd_<name>`. The bot's /start handler parses that
+// payload and re-dispatches the real /<name> command. See
+// trainersource-bot/src/handlers/commands.ts.
+const BOT_USERNAME = 'peptidebutlerbot';
+
+function fireSlashCommand(cmd: string) {
+  tapHaptic();
+  const name = cmd.startsWith('/') ? cmd.slice(1) : cmd;
+  const url = `https://t.me/${BOT_USERNAME}?start=cmd_${name}`;
+  const tg = getTg();
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(url);
+  } else {
+    window.location.href = url;
+  }
 }
 
 type Tile = {
@@ -104,8 +124,6 @@ function LauncherInner() {
   const [status, setStatus] = useState<'routing' | 'menu' | 'unavailable'>(
     'routing',
   );
-  const [toast, setToast] = useState<string | null>(null);
-
   useEffect(() => {
     if (!isValidApp(app)) {
       setStatus('menu');
@@ -125,17 +143,8 @@ function LauncherInner() {
     [router],
   );
 
-  const runCommand = useCallback(async (cmd: string) => {
-    tapHaptic();
-    try {
-      await navigator.clipboard.writeText(cmd);
-    } catch {
-      // clipboard may be blocked — still close so user can type manually
-    }
-    setToast(`${cmd} copied — paste in chat`);
-    window.setTimeout(() => {
-      getTg()?.close();
-    }, 700);
+  const runCommand = useCallback((cmd: string) => {
+    fireSlashCommand(cmd);
   }, []);
 
   const closeAndChat = useCallback(() => {
@@ -224,7 +233,7 @@ function LauncherInner() {
             Slash commands
           </h2>
           <span className="text-[10px] uppercase tracking-widest text-[#597083]">
-            Tap to copy
+            Tap to run
           </span>
         </div>
         <ul className="divide-y divide-[#243444] overflow-hidden rounded-2xl border border-[#243444] bg-[#1a2a3a]">
@@ -242,7 +251,7 @@ function LauncherInner() {
                   {item.desc}
                 </span>
                 <span className="text-xs text-[#597083]" aria-hidden>
-                  ⧉
+                  ›
                 </span>
               </button>
             </li>
@@ -266,18 +275,6 @@ function LauncherInner() {
       <footer className="mt-8 text-center text-[10px] uppercase tracking-[0.24em] text-[#597083]">
         Research use only · Ultimate Peptides
       </footer>
-
-      {toast ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="pointer-events-none fixed inset-x-0 bottom-8 z-50 flex justify-center px-4"
-        >
-          <div className="rounded-full border border-[#cc8218] bg-[#14202b] px-4 py-2 text-xs font-medium text-[#e6c875] shadow-lg">
-            {toast}
-          </div>
-        </div>
-      ) : null}
     </main>
   );
 }

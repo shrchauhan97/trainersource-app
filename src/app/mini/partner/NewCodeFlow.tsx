@@ -112,8 +112,8 @@ export default function NewCodeFlow({ onIssued }: Props) {
 
   if (state.kind === 'idle' || state.kind === 'submitting') {
     return (
-      <section className="rounded-2xl border border-dashed border-[var(--tg-hint,#999)]/30 p-4 text-center">
-        <p className="text-xs opacity-60">
+      <section className="rounded-2xl border border-dashed border-[#2f4459] bg-[#14202b] p-4 text-center">
+        <p className="text-xs text-[#94a3b8]">
           {state.kind === 'submitting'
             ? 'Issuing code…'
             : 'Tap the + New code button below to create a code.'}
@@ -124,12 +124,14 @@ export default function NewCodeFlow({ onIssued }: Props) {
 
   if (state.kind === 'error') {
     return (
-      <section className="rounded-2xl border border-red-500/40 bg-red-500/5 p-4 text-center">
-        <p className="text-sm font-semibold">Couldn&apos;t issue code</p>
-        <p className="mt-1 text-xs font-mono opacity-70 break-all">{state.message}</p>
+      <section className="rounded-2xl border border-[#7f1d1d] bg-[#2b1414] p-4 text-center">
+        <p className="text-sm font-semibold text-[#fca5a5]">Couldn&apos;t issue code</p>
+        <p className="mt-1 text-xs font-mono text-[#94a3b8] break-all">
+          {state.message}
+        </p>
         <button
           onClick={() => setState({ kind: 'idle' })}
-          className="mt-2 text-xs underline opacity-70"
+          className="mt-2 text-xs text-[#cbd5e1] underline"
         >
           Try again
         </button>
@@ -139,20 +141,26 @@ export default function NewCodeFlow({ onIssued }: Props) {
 
   // state.kind === 'issued'
   return (
-    <section className="rounded-2xl border border-emerald-500/40 bg-emerald-500/5 p-4 text-center space-y-2">
-      <p className="text-sm font-semibold">Code created</p>
-      <p className="font-mono text-xl tracking-wider">{state.data.code}</p>
-      <p className="text-xs opacity-70 break-all">{state.data.deep_link}</p>
+    <section className="rounded-2xl border border-[#259a8a] bg-[#0e2b26] p-4 text-center space-y-2">
+      <p className="text-sm font-semibold text-[#2db5a3]">Code created</p>
+      <p className="font-mono text-xl tracking-wider text-[#e6c875]">
+        {state.data.code}
+      </p>
+      <p className="text-xs text-[#94a3b8] break-all">{state.data.deep_link}</p>
       <div className="flex gap-2 justify-center pt-1">
         <button
           onClick={shareCode}
-          className="rounded-full bg-[var(--tg-button,#2481CC)] text-[var(--tg-button-text,#fff)] px-4 py-1.5 text-sm font-semibold"
+          className="rounded-full px-4 py-1.5 text-sm font-semibold"
+          style={{
+            background: 'linear-gradient(135deg, #e6c875 0%, #cc8218 100%)',
+            color: '#14202b',
+          }}
         >
           Share
         </button>
         <button
           onClick={() => setState({ kind: 'idle' })}
-          className="rounded-full border border-[var(--tg-hint,#999)]/40 px-4 py-1.5 text-sm"
+          className="rounded-full border border-[#2f4459] text-[#cbd5e1] px-4 py-1.5 text-sm"
         >
           Done
         </button>

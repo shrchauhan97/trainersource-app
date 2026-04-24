@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import MiniAppBackButton from '../MiniAppBackButton';
 import { OrderCard, type OrderCardData } from './OrderCard';
 
 // Minimal Telegram WebApp typing used by this page. Cast at use-sites to avoid
@@ -169,10 +170,11 @@ export default function ReorderPage() {
     <main
       className="min-h-screen px-4 py-6"
       style={{
-        background: 'var(--tg-theme-bg-color, #ffffff)',
-        color: 'var(--tg-theme-text-color, #111827)',
+        background: '#14202b',
+        color: '#e8eefa',
       }}
     >
+      <MiniAppBackButton />
       <header className="mb-6">
         <h1 className="text-2xl font-bold mb-1">🛒 Reorder</h1>
         {state.kind === 'loaded' ? (
