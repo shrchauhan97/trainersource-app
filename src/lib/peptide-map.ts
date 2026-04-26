@@ -50,15 +50,9 @@ const CANONICAL: Record<string, string[]> = {
   "121": ["Selank"],
   "123": ["GHK-Cu"],
   "124": ["Epitalon"],
-  "semaglutide": ["Semaglutide"],
-  "tirzepatide": ["Tirzepatide"],
-  "retatrutide": ["Retatrutide"],
+  // Slug-only additions (rest already in the canonical block above):
   "bpc-157-tb-500": ["BPC-157", "TB-500"],
   "ipamorelin-10mg": ["Ipamorelin"],
-  "ipamorelin-product-vial": ["Ipamorelin"],
-  "selank": ["Selank"],
-  "ghk-cu": ["GHK-Cu"],
-  "epithalon": ["Epitalon"],
 };
 
 export function slugToPeptideTags(slug: string): string[] {
