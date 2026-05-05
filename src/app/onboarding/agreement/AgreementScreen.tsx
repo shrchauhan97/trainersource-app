@@ -34,7 +34,7 @@ export function AgreementScreen({
   const handleNext = () => {
     setError(null);
     startTransition(async () => {
-      const result = await submitAgreementFinal(trainerId);
+      const result = await submitAgreementFinal();
       if (result?.error) {
         setError(result.error);
       }

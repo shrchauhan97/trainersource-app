@@ -3,13 +3,20 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { checkApplicationDetails } from '../_lib/applicationValidation';
+import { safeError } from '../_lib/errors';
 import { advanceOnboardingStep } from '../_lib/state';
 import { uploadOnboardingFile } from '../_lib/storage';
 
 // Resolve the current trainer via the authenticated session. We never trust a
 // client-supplied trainerId for writes — only the email match against the
-// auth session decides which row the action mutates.
-async function resolveTrainerId(): Promise<{ trainerId?: string; error?: string }> {
+// auth session decides which row the action mutates. Also returns the
+// trainer's existing country / city so we can refuse silent jurisdiction
+// changes mid-onboarding.
+async function resolveTrainerForOnboarding(): Promise<
+  | { error: string }
+  | { trainerId: string; existingCountry: string | null; existingCity: string | null }
+> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,15 +25,19 @@ async function resolveTrainerId(): Promise<{ trainerId?: string; error?: string 
 
   const { data: trainer, error } = await supabase
     .from('trainers')
-    .select('id, status')
+    .select('id, status, country, city')
     .eq('email', user.email)
     .maybeSingle();
-  if (error) return { error: error.message };
+  if (error) return { error: safeError('resolveTrainerForOnboarding', error) };
   if (!trainer) return { error: 'Trainer not found.' };
   if (trainer.status !== 'onboarding') {
     return { error: 'Your onboarding session is no longer active.' };
   }
-  return { trainerId: trainer.id };
+  return {
+    trainerId: trainer.id,
+    existingCountry: trainer.country ?? null,
+    existingCity: trainer.city ?? null,
+  };
 }
 
 function strOrNull(v: FormDataEntryValue | null): string | null {
@@ -50,14 +61,17 @@ export type ContactState = {
 };
 
 // Save the Contact tab. First/last name + onboarding-only fields land in
-// trainer_application_details. Country/City update the canonical trainers row
-// (those columns predate onboarding v2 and are the system of record).
+// trainer_application_details. Country/City update the canonical trainers
+// row ONLY when the trainer doesn't already have one set — applied trainers
+// have a jurisdiction locked at /apply time and shouldn't be able to flip it
+// from the onboarding form.
 export async function saveContactDetails(
   _prev: ContactState,
   formData: FormData,
 ): Promise<ContactState> {
-  const { trainerId, error } = await resolveTrainerId();
-  if (error || !trainerId) return { ok: false, error: error ?? 'Unauthorized' };
+  const session = await resolveTrainerForOnboarding();
+  if ('error' in session) return { ok: false, error: session.error };
+  const { trainerId, existingCountry, existingCity } = session;
 
   const supabase = await createClient();
 
@@ -75,18 +89,17 @@ export async function saveContactDetails(
   const tiktok = strOrNull(formData.get('tiktok'));
   const linkedin = strOrNull(formData.get('linkedin'));
 
-  // trainers row owns country/city historically; keep them in sync.
-  if (country !== null || city !== null) {
-    const update: Record<string, string> = {};
-    if (country !== null) update.country = country;
-    if (city !== null) update.city = city;
-    if (Object.keys(update).length > 0) {
-      const { error: trainerErr } = await supabase
-        .from('trainers')
-        .update(update)
-        .eq('id', trainerId);
-      if (trainerErr) return { ok: false, error: trainerErr.message };
-    }
+  // Backfill country/city ONLY when the trainers row doesn't have them
+  // already. Locked-after-apply jurisdiction protects compliance posture.
+  const trainerUpdate: Record<string, string> = {};
+  if (!existingCountry && country) trainerUpdate.country = country;
+  if (!existingCity && city) trainerUpdate.city = city;
+  if (Object.keys(trainerUpdate).length > 0) {
+    const { error: trainerErr } = await supabase
+      .from('trainers')
+      .update(trainerUpdate)
+      .eq('id', trainerId);
+    if (trainerErr) return { ok: false, error: safeError('saveContactDetails:trainers', trainerErr) };
   }
 
   const { error: appErr } = await supabase
@@ -109,7 +122,7 @@ export async function saveContactDetails(
       },
       { onConflict: 'trainer_id' },
     );
-  if (appErr) return { ok: false, error: appErr.message };
+  if (appErr) return { ok: false, error: safeError('saveContactDetails:details', appErr) };
 
   revalidatePath('/onboarding/application');
   return { ok: true };
@@ -120,26 +133,28 @@ export type QualificationsState = {
   error?: string;
 };
 
-// One-shot save: replace all qualifications for this trainer in a single
-// transaction-ish flow (delete + insert). Per-row CRUD is more code for v1
-// without a real win — the user's mental model is "save the table".
+// One-shot save for the qualifications table. Order of operations:
+//   1. Upload all new files. If ANY upload fails we abort BEFORE deleting
+//      the existing rows — that way a network blip mid-save never leaves
+//      the trainer with zero qualifications.
+//   2. Delete the existing rows.
+//   3. Insert the new rows referencing the freshly uploaded paths.
+// This is best-effort transactional; a crash between (2) and (3) still
+// loses data but the upload-first ordering eliminates the most common
+// failure mode.
 export async function saveQualifications(
   _prev: QualificationsState,
   formData: FormData,
 ): Promise<QualificationsState> {
-  const { trainerId, error } = await resolveTrainerId();
-  if (error || !trainerId) return { ok: false, error: error ?? 'Unauthorized' };
+  const session = await resolveTrainerForOnboarding();
+  if ('error' in session) return { ok: false, error: session.error };
+  const { trainerId } = session;
 
   const supabase = await createClient();
 
-  // Form encodes each row as parallel arrays via [] suffix:
-  // certificate_name[], issuing_body[], date_of_issue[], is_current[], upload[]
   const names = formData.getAll('certificate_name[]');
   const bodies = formData.getAll('issuing_body[]');
   const dates = formData.getAll('date_of_issue[]');
-  // For checkboxes we use a parallel `is_current_<idx>` field to avoid the
-  // browser-omits-unchecked problem (FormData drops unchecked checkboxes,
-  // breaking parallel arrays). Each row's index is encoded explicitly.
   const uploads = formData.getAll('upload[]');
 
   const rows: Array<{
@@ -153,7 +168,7 @@ export async function saveQualifications(
   const len = Math.max(names.length, bodies.length, dates.length, uploads.length);
   for (let i = 0; i < len; i++) {
     const name = strOrNull(names[i] ?? null);
-    if (!name) continue; // Skip empty rows entirely.
+    if (!name) continue;
     const body = strOrNull(bodies[i] ?? null);
     const date = strOrNull(dates[i] ?? null);
     const isCurrent = strOrNull(formData.get(`is_current_${i}`)) === 'on';
@@ -167,19 +182,7 @@ export async function saveQualifications(
     });
   }
 
-  // Wipe and replace. Trainer can only see their own rows (RLS) so this is safe.
-  const { error: delErr } = await supabase
-    .from('trainer_qualifications')
-    .delete()
-    .eq('trainer_id', trainerId);
-  if (delErr) return { ok: false, error: delErr.message };
-
-  if (rows.length === 0) {
-    revalidatePath('/onboarding/application');
-    return { ok: true };
-  }
-
-  // Upload any files first so we can persist their paths in one insert batch.
+  // (1) Upload first. Bail before deleting on any failure.
   const inserts: Array<{
     trainer_id: string;
     certificate_name: string;
@@ -206,8 +209,21 @@ export async function saveQualifications(
     });
   }
 
+  // (2) Delete existing rows now that uploads succeeded.
+  const { error: delErr } = await supabase
+    .from('trainer_qualifications')
+    .delete()
+    .eq('trainer_id', trainerId);
+  if (delErr) return { ok: false, error: safeError('saveQualifications:delete', delErr) };
+
+  if (inserts.length === 0) {
+    revalidatePath('/onboarding/application');
+    return { ok: true };
+  }
+
+  // (3) Insert.
   const { error: insErr } = await supabase.from('trainer_qualifications').insert(inserts);
-  if (insErr) return { ok: false, error: insErr.message };
+  if (insErr) return { ok: false, error: safeError('saveQualifications:insert', insErr) };
 
   revalidatePath('/onboarding/application');
   return { ok: true };
@@ -218,14 +234,14 @@ export type SalesGoalsState = {
   error?: string;
 };
 
-// Sales Goals tab + selfie video upload. The video is optional and may be
-// omitted entirely (e.g. trainer hits Save before recording).
+// Sales Goals tab + selfie video upload. Video is optional.
 export async function saveSalesGoals(
   _prev: SalesGoalsState,
   formData: FormData,
 ): Promise<SalesGoalsState> {
-  const { trainerId, error } = await resolveTrainerId();
-  if (error || !trainerId) return { ok: false, error: error ?? 'Unauthorized' };
+  const session = await resolveTrainerForOnboarding();
+  if ('error' in session) return { ok: false, error: session.error };
+  const { trainerId } = session;
 
   const supabase = await createClient();
 
@@ -243,7 +259,7 @@ export async function saveSalesGoals(
 
   const video = formData.get('selfie_video');
   if (video instanceof File && video.size > 0) {
-    const result = await uploadOnboardingFile(trainerId, video, 'selfie-video');
+    const result = await uploadOnboardingFile(trainerId, video, 'selfie_video');
     if ('error' in result) return { ok: false, error: result.error };
     update.selfie_video_path = result.path;
   }
@@ -251,21 +267,54 @@ export async function saveSalesGoals(
   const { error: appErr } = await supabase
     .from('trainer_application_details')
     .upsert(update, { onConflict: 'trainer_id' });
-  if (appErr) return { ok: false, error: appErr.message };
+  if (appErr) return { ok: false, error: safeError('saveSalesGoals', appErr) };
 
   revalidatePath('/onboarding/application');
   return { ok: true };
 }
 
-// Final advance — stamps application_submitted_at, flips onboarding_step to
-// 'training', and redirects. No-op if the trainer is already past step 1.
+// Final advance — gated on minimum completeness so a trainer can't stamp
+// application_submitted_at on a bare row and only learn at /go-live that
+// they need to redo step 1.
 export async function submitApplicationFinal(): Promise<void> {
-  const { trainerId, error } = await resolveTrainerId();
-  if (error || !trainerId) {
-    throw new Error(error ?? 'Unauthorized');
+  const session = await resolveTrainerForOnboarding();
+  if ('error' in session) {
+    throw new Error(session.error);
   }
+  const { trainerId } = session;
 
   const supabase = await createClient();
+
+  // Re-read the canonical trainers + details rows to validate completeness
+  // server-side. Don't trust whatever the client showed us.
+  const [{ data: trainer }, { data: details }] = await Promise.all([
+    supabase
+      .from('trainers')
+      .select('country, city')
+      .eq('id', trainerId)
+      .maybeSingle(),
+    supabase
+      .from('trainer_application_details')
+      .select('*')
+      .eq('trainer_id', trainerId)
+      .maybeSingle(),
+  ]);
+
+  if (!trainer?.country || !trainer.country.trim() || !trainer?.city || !trainer.city.trim()) {
+    throw new Error('Country and city are required before submitting your application.');
+  }
+
+  const completeness = checkApplicationDetails(details ?? null);
+  if (!completeness.ok) {
+    const labels: Record<string, string> = {
+      first_name: 'First name',
+      last_name: 'Last name',
+      profession: 'Profession',
+    };
+    const friendly = completeness.missing.map((k) => labels[k] ?? k).join(', ');
+    throw new Error(`Fill these required fields before submitting: ${friendly}`);
+  }
+
   await supabase
     .from('trainer_application_details')
     .upsert(

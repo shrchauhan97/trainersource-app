@@ -63,7 +63,7 @@ export function WelcomeVideoTab({
     watchFiredRef.current = true;
     setHasMarkedWatched(true);
     startWatchTransition(async () => {
-      const result = await markWelcomeVideoWatched(trainerId);
+      const result = await markWelcomeVideoWatched();
       if (result.error) {
         // Roll back so a transient error lets the next play retry.
         watchFiredRef.current = false;

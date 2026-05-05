@@ -3,14 +3,16 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { safeError } from '../_lib/errors';
 import { uploadOnboardingFile } from '../_lib/storage';
 import { advanceOnboardingStep } from '../_lib/state';
 import { ONBOARDING_STEP_PATHS } from '../_lib/types';
 
-// Verifies the caller's auth session matches the trainer they're acting on.
-// Every step-3 action runs this first; matches the pattern in ../actions.ts so
-// a logged-in trainer can't poke another trainer's row by guessing IDs.
-async function ensureTrainerSession(trainerId: string) {
+// Resolves the current onboarding trainer from the auth session. We never
+// accept a client-supplied trainerId for writes — it's always derived from
+// the authenticated email match. This blocks "operate on another trainer's
+// row by passing their UUID" in every step-3 action.
+async function resolveOnboardingTrainer() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,7 +22,6 @@ async function ensureTrainerSession(trainerId: string) {
   const { data: trainer } = await supabase
     .from('trainers')
     .select('id, status')
-    .eq('id', trainerId)
     .eq('email', user.email)
     .maybeSingle();
 
@@ -28,15 +29,15 @@ async function ensureTrainerSession(trainerId: string) {
   if (trainer.status !== 'onboarding') {
     return { error: 'Your onboarding status is no longer eligible.' as const };
   }
-  return { supabase };
+  return { supabase, trainerId: trainer.id as string };
 }
 
 // Stamps welcome_video_watched_at the first time the trainer presses play.
-// Idempotent: the upsert sets the timestamp once; reruns just update updated_at.
-export async function markWelcomeVideoWatched(trainerId: string): Promise<{ error?: string }> {
-  const session = await ensureTrainerSession(trainerId);
+// Idempotent: skip the upsert if already stamped.
+export async function markWelcomeVideoWatched(): Promise<{ error?: string }> {
+  const session = await resolveOnboardingTrainer();
   if ('error' in session) return { error: session.error };
-  const { supabase } = session;
+  const { supabase, trainerId } = session;
 
   const { data: existing } = await supabase
     .from('trainer_agreement')
@@ -60,7 +61,7 @@ export async function markWelcomeVideoWatched(trainerId: string): Promise<{ erro
       { onConflict: 'trainer_id' },
     );
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeError('markWelcomeVideoWatched', error) };
 
   revalidatePath('/onboarding/agreement');
   return {};
@@ -68,13 +69,12 @@ export async function markWelcomeVideoWatched(trainerId: string): Promise<{ erro
 
 // Upserts payout details. We accept partial fields — final validation happens
 // at submitAgreementFinal, since trainers may save and come back.
-export async function savePayoutDetails(formData: FormData): Promise<{ error?: string; success?: boolean }> {
-  const trainerId = String(formData.get('trainerId') ?? '');
-  if (!trainerId) return { error: 'Missing trainer.' };
-
-  const session = await ensureTrainerSession(trainerId);
+export async function savePayoutDetails(
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await resolveOnboardingTrainer();
   if ('error' in session) return { error: session.error };
-  const { supabase } = session;
+  const { supabase, trainerId } = session;
 
   const str = (key: string) => {
     const value = formData.get(key);
@@ -104,28 +104,27 @@ export async function savePayoutDetails(formData: FormData): Promise<{ error?: s
     .from('trainer_payout_details')
     .upsert(payload, { onConflict: 'trainer_id' });
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeError('savePayoutDetails', error) };
 
   revalidatePath('/onboarding/agreement');
   return { success: true };
 }
 
-// Uploads the signed PDF to storage and stamps the row. Used by the
-// "Upload signed agreement" file picker on Tab 2.
-export async function uploadSignedAgreement(formData: FormData): Promise<{ error?: string; success?: boolean }> {
-  const trainerId = String(formData.get('trainerId') ?? '');
-  if (!trainerId) return { error: 'Missing trainer.' };
-
-  const session = await ensureTrainerSession(trainerId);
+// Uploads the signed PDF to storage and stamps the row. PDF-only via the
+// validateUpload allowlist; trainerId always resolved from session.
+export async function uploadSignedAgreement(
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await resolveOnboardingTrainer();
   if ('error' in session) return { error: session.error };
-  const { supabase } = session;
+  const { supabase, trainerId } = session;
 
   const file = formData.get('signed_agreement');
   if (!(file instanceof File) || file.size === 0) {
     return { error: 'Please choose a file.' };
   }
 
-  const upload = await uploadOnboardingFile(trainerId, file, 'signed-agreement');
+  const upload = await uploadOnboardingFile(trainerId, file, 'signed_agreement');
   if ('error' in upload) return { error: upload.error };
 
   const now = new Date().toISOString();
@@ -141,7 +140,7 @@ export async function uploadSignedAgreement(formData: FormData): Promise<{ error
       { onConflict: 'trainer_id' },
     );
 
-  if (error) return { error: error.message };
+  if (error) return { error: safeError('uploadSignedAgreement', error) };
 
   revalidatePath('/onboarding/agreement');
   return { success: true };
@@ -150,10 +149,10 @@ export async function uploadSignedAgreement(formData: FormData): Promise<{ error
 // Final submission. Validates that payout details have either a bank pair
 // (bank_name + account_number) OR a crypto wallet, and that the signed
 // agreement is uploaded. On success, advances the trainer to go_live.
-export async function submitAgreementFinal(trainerId: string): Promise<{ error?: string }> {
-  const session = await ensureTrainerSession(trainerId);
+export async function submitAgreementFinal(): Promise<{ error?: string }> {
+  const session = await resolveOnboardingTrainer();
   if ('error' in session) return { error: session.error };
-  const { supabase } = session;
+  const { supabase, trainerId } = session;
 
   const [{ data: payout }, { data: agreement }] = await Promise.all([
     supabase
@@ -172,10 +171,14 @@ export async function submitAgreementFinal(trainerId: string): Promise<{ error?:
     payout?.bank_name && payout.bank_name.trim().length > 0 &&
     payout?.account_number && payout.account_number.trim().length > 0,
   );
-  const cryptoOk = Boolean(payout?.crypto_wallet_address && payout.crypto_wallet_address.trim().length > 0);
+  const cryptoOk = Boolean(
+    payout?.crypto_wallet_address && payout.crypto_wallet_address.trim().length > 0,
+  );
 
   if (!bankPairOk && !cryptoOk) {
-    return { error: 'Add either bank details (bank name + account number) or a crypto wallet address.' };
+    return {
+      error: 'Add either bank details (bank name + account number) or a crypto wallet address.',
+    };
   }
   if (!agreement?.signed_agreement_path) {
     return { error: 'Upload your signed agreement before continuing.' };

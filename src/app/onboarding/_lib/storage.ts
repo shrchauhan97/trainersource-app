@@ -1,28 +1,37 @@
 import 'server-only';
 import { createClient } from '@/lib/supabase/server';
+import { UPLOAD_SPECS, validateUpload, type UploadKind } from './uploadValidation';
 
 const BUCKET = 'onboarding-uploads';
-const MAX_BYTES = 50 * 1024 * 1024; // 50 MB cap (selfie videos can be large).
 
 export type UploadResult = { path: string } | { error: string };
 
 // Uploads a File from a server-action FormData entry into the per-trainer
-// folder. Returns the storage path which gets stored in the matching detail
-// table (selfie_video_path, signed_agreement_path, qualification.upload_path).
+// folder. Per-kind content-type/extension/size validation happens in
+// validateUpload — so callers just pass the kind discriminator and we
+// guarantee a clean, sandboxed path or a safe error string.
 export async function uploadOnboardingFile(
   trainerId: string,
   file: File,
-  filenamePrefix: string,
+  kind: UploadKind,
 ): Promise<UploadResult> {
-  if (!(file instanceof File) || file.size === 0) {
+  if (!(file instanceof File)) {
     return { error: 'No file provided.' };
   }
-  if (file.size > MAX_BYTES) {
-    return { error: `File too large. Maximum is ${MAX_BYTES / 1024 / 1024} MB.` };
+
+  // trainerId is server-supplied (always resolved from the auth session)
+  // but defence-in-depth — refuse anything that could escape the bucket.
+  if (!/^[0-9a-f-]{36}$/i.test(trainerId)) {
+    return { error: 'Invalid trainer reference.' };
   }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'bin';
-  const path = `${trainerId}/${filenamePrefix}-${Date.now()}.${ext}`;
+  const validation = validateUpload(file, kind);
+  if (!validation.ok) {
+    return { error: validation.error };
+  }
+
+  const spec = UPLOAD_SPECS[kind];
+  const path = `${trainerId}/${spec.folderPrefix}-${Date.now()}.${validation.extension}`;
 
   const supabase = await createClient();
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -30,11 +39,14 @@ export async function uploadOnboardingFile(
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(path, buffer, {
-      contentType: file.type || 'application/octet-stream',
+      contentType: file.type,
       upsert: false,
     });
 
-  if (error) return { error: error.message };
+  if (error) {
+    console.error('[storage] upload failed:', { kind, trainerId, error });
+    return { error: 'We couldn’t save that file. Please try again.' };
+  }
   return { path };
 }
 
