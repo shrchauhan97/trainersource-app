@@ -6,7 +6,12 @@ create extension if not exists "pgcrypto";
 
 -- Tracks the trainer's progress through the 4-step stepper. The current_step
 -- column drives which screen they land on when they hit /onboarding.
-create type onboarding_step as enum ('application','training','agreement','go_live');
+-- Wrapped in DO block since CREATE TYPE has no IF NOT EXISTS clause.
+do $$ begin
+  create type onboarding_step as enum ('application','training','agreement','go_live');
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table trainers
   add column if not exists onboarding_step onboarding_step not null default 'application',
@@ -103,7 +108,9 @@ insert into storage.buckets (id, name, public)
 
 -- Trainers can upload to their own folder. The folder name is the trainers.id
 -- UUID; we resolve the auth.uid()->trainers.id mapping via email match.
-create policy if not exists "trainer upload own folder"
+-- CREATE POLICY has no IF NOT EXISTS, so we drop-then-create for idempotency.
+drop policy if exists "trainer upload own folder" on storage.objects;
+create policy "trainer upload own folder"
   on storage.objects for insert to authenticated
   with check (
     bucket_id = 'onboarding-uploads'
@@ -112,7 +119,8 @@ create policy if not exists "trainer upload own folder"
     )
   );
 
-create policy if not exists "trainer read own folder"
+drop policy if exists "trainer read own folder" on storage.objects;
+create policy "trainer read own folder"
   on storage.objects for select to authenticated
   using (
     bucket_id = 'onboarding-uploads'
@@ -121,7 +129,8 @@ create policy if not exists "trainer read own folder"
     )
   );
 
-create policy if not exists "admins read all onboarding uploads"
+drop policy if exists "admins read all onboarding uploads" on storage.objects;
+create policy "admins read all onboarding uploads"
   on storage.objects for select to authenticated
   using (
     bucket_id = 'onboarding-uploads'
