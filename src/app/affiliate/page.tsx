@@ -2,127 +2,142 @@ import Link from "next/link";
 import PublicTopNav from "@/components/landing/PublicTopNav";
 import PublicFooter from "@/components/landing/PublicFooter";
 
-type Metric = {
-  value: string;
-  label: string;
-  caption: string;
-};
+const HERO_IMAGE =
+  "https://lh3.googleusercontent.com/aida/ADBb0uhJl8AqMpwR0n3wBhjRtOXeTEMFakKuy9zpkHIxseJRA1_y-ysF8ilMTftl0-ILcCM3Z-QoI0OurQOHdrjVi1q6mfTkhBA0yfuNxbqewFJT4k88EMQTxsjBUqKBHqTC2D5EWt0tGaYO9wtIvsVoVQaA7TO2QrAMgauoXxc7pdCTfx2uHND7MbZ-IEL-4DcOUTlzP-Bkz8ebwGOMxnMNj8jKOFCVJzsqKWw8xx75CEyKoIsLNN-HlpOFAbj2e5Q45fBmFBdNoxFcDQ";
 
-const METRICS: Metric[] = [
-  {
-    value: "15%",
-    label: "Lifetime",
-    caption: "Recurring",
-  },
-  {
-    value: "30",
-    label: "Days",
-    caption: "Automated Settlement",
-  },
-  {
-    value: "SG",
-    label: "Active",
-    caption: "Region Only",
-  },
-  {
-    value: "07",
-    label: "Days",
-    caption: "Rapid Integration",
-  },
+const SUPPORT_IMAGE =
+  "https://lh3.googleusercontent.com/aida/ADBb0ugXQeVANS6Q79e7SAj32fhc35gQtCyD4V7d9Pi2RMqfm9zeQODh7LFKUOK5fyQS-x82cO_YB8xuVHWCQeIpvyYMDKc0mCaqxKvsJEWnulE3tDCHSpuEwOtKv8YvScVwcGQmfLn6fCK6AFLL2jYaD9RcF27FB71Sm49gGIcAF3q8Z9yJ3vWxv3heZQNDqxooF9IT1C59wjMacAwvLzDZCmGKODbOTLAxe3stlJy9cRFwxb2aZifOZBkp3NVHGKo4j7mwCIrXJR7Fvw";
+
+// Verbatim from Stitch HTML — labels include the typo "INITAL" preserved
+// from the source so design QA matches exactly. Fix in copy review later.
+const METRICS = [
+  { label: "INITAL Commission Rate", value: "15", suffix: "%", caption: "Lifetime Recurring" },
+  { label: "Payout Cycle", value: "30", suffix: "DAYS", caption: "Automated Settlement" },
+  { label: "Territory", value: "SG", suffix: "", caption: "Active Region Only" },
+  { label: "Onboarding", value: "07", suffix: "DAYS", caption: "Rapid Integration" },
 ];
 
-const SUPPORT_BULLETS: string[] = [
-  "Dedicated affiliate manager for onboarding and growth.",
-  "Real-time commission tracking and transparent payouts.",
-  "Marketing assets and clinical resources at your fingertips.",
+const SUPPORT_BULLETS = [
+  "Customized Referral CODES",
+  "Real-Time Commission Tracking",
+  "PRODUCT DISCOUNTS FOR ACTIVE TRAINERS",
 ];
 
 export default function AffiliatePage() {
   return (
-    <div className="flex min-h-screen w-full flex-col bg-stitch-surface text-stitch-on-surface">
+    <div className="min-h-screen bg-[#f4faff] text-[#161c20]">
       <PublicTopNav />
 
-      <main className="flex flex-col">
+      <main className="pt-16 min-h-screen">
         {/* Hero */}
-        <section className="px-6 py-16 md:px-10 md:py-24 lg:py-32">
-          <div className="mx-auto flex max-w-7xl flex-col gap-10">
-            <span className="inline-flex w-fit items-center rounded-full bg-stitch-tertiary-fixed px-4 py-2 font-heading text-xs font-bold uppercase tracking-[0.3em] text-stitch-on-surface">
-              Program Description
-            </span>
-            <h1 className="font-heading text-5xl font-extrabold uppercase leading-[0.95] tracking-tight text-primary md:text-7xl lg:text-8xl">
-              Become A <br />
-              TrainerSource <br />
-              Affiliate.
+        <section className="relative bg-[#f4faff] py-24 px-8 overflow-hidden">
+          <div className="max-w-screen-xl mx-auto flex flex-col items-center text-center">
+            <div className="inline-block bg-[#79ff5b] text-[#022100] px-3 py-1 mb-8">
+              <span className="font-headline font-bold text-[11px] tracking-[0.05em] uppercase">
+                PROGRAM DESCRIPTION
+              </span>
+            </div>
+            <h1 className="text-6xl md:text-8xl font-headline font-bold text-[#161c20] tracking-[-0.02em] mb-12 max-w-4xl leading-[0.95]">
+              Become A TrainerSource Affiliate.
             </h1>
-            <div
-              className="h-[420px] w-full rounded-2xl bg-slate-300"
-              role="img"
-              aria-label="Hero image of trainer reviewing affiliate dashboard"
-            />
-            <p className="max-w-3xl text-lg leading-relaxed text-stitch-on-surface-variant md:text-xl">
-              Join the most rewarding affiliate program in professional training. Equip your
-              clients with premium products while building a recurring revenue stream — backed by
-              transparent tracking, dedicated support, and clinical-grade resources.
-            </p>
-            <Link
-              href="/apply"
-              className="inline-flex w-fit items-center gap-3 rounded-full bg-hyrox-orange px-9 py-5 font-heading text-base font-bold uppercase tracking-widest text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-orange-500/30"
-            >
-              Apply Now
-              <span className="material-symbols-outlined">arrow_forward</span>
-            </Link>
+            <div className="w-full max-w-5xl aspect-video rounded-lg overflow-hidden bg-[#e9eff4] mb-16 shadow-[0px_12px_32px_rgba(45,79,103,0.08)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt="TrainerSource Affiliate Hero"
+                className="w-full h-full object-cover object-top grayscale contrast-125 mix-blend-multiply opacity-90"
+                src={HERO_IMAGE}
+              />
+            </div>
+            <div className="max-w-2xl mx-auto">
+              <p className="text-xl md:text-2xl text-[#41627b] leading-relaxed font-body mb-12">
+                TrainerSource affiliates earn generous lifetime commissions on all referred client
+                sales, with monthly payments and easy-to-track codes. Currently operating in
+                Singapore only, we are seeking sports professionals with an established client base.
+                Apply below and start working with us within a week!
+              </p>
+              <Link
+                href="/apply"
+                className="inline-block text-white px-12 py-5 rounded-lg text-lg font-bold tracking-wider hover:opacity-90 transition-all shadow-xl active:scale-[0.98]"
+                style={{ backgroundColor: "#FF5722" }}
+              >
+                APPLY NOW
+              </Link>
+            </div>
           </div>
         </section>
 
-        {/* Telemetry grid */}
-        <section className="border-y border-stitch-outline-variant/40 bg-stitch-surface-container px-6 py-16 md:px-10 md:py-20">
-          <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 md:grid-cols-4 md:gap-12">
-            {METRICS.map((metric) => (
-              <div
-                key={`${metric.value}-${metric.caption}`}
-                className="flex flex-col gap-2 border-l-4 border-hyrox-orange pl-5"
-              >
-                <div className="font-heading text-5xl font-extrabold tracking-tight text-primary md:text-6xl">
-                  {metric.value}
+        {/* Telemetry / metrics grid */}
+        <section className="bg-[#eef4f9] py-24 px-8">
+          <div className="max-w-screen-xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-1">
+              {METRICS.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="bg-white p-8 border border-[#c2c7cd]/10"
+                >
+                  <span className="block font-headline font-bold text-[11px] text-[#41627b] tracking-[0.05em] uppercase mb-4">
+                    {metric.label}
+                  </span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl font-headline font-bold text-[#161c20]">
+                      {metric.value}
+                    </span>
+                    {metric.suffix ? (
+                      <span className="text-xl font-headline font-bold text-[#671800]">
+                        {metric.suffix}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-4 text-xs text-[#41627b]/60 font-body uppercase tracking-widest">
+                    {metric.caption}
+                  </p>
                 </div>
-                <div className="font-heading text-sm font-bold uppercase tracking-widest text-stitch-on-surface">
-                  {metric.label}
-                </div>
-                <div className="text-sm text-stitch-on-surface-variant">{metric.caption}</div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 
         {/* Asymmetric detail */}
-        <section className="px-6 py-16 md:px-10 md:py-24">
-          <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-12">
-            <div className="lg:col-span-7">
-              <div
-                className="h-[420px] w-full rounded-2xl bg-slate-300 lg:h-[520px]"
-                role="img"
-                aria-label="Affiliate manager assisting trainer"
+        <section className="bg-[#f4faff] py-32 px-8">
+          <div className="max-w-screen-xl mx-auto grid md:grid-cols-12 gap-16 items-center">
+            <div className="md:col-span-7">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="w-full h-[500px] object-cover rounded-lg"
+                alt="State-of-the-art performance laboratory"
+                src={SUPPORT_IMAGE}
               />
             </div>
-            <div className="flex flex-col gap-6 lg:col-span-5">
-              <span className="font-heading text-xs font-bold uppercase tracking-[0.3em] text-hyrox-orange">
-                Affiliate Support
+            <div className="md:col-span-5">
+              <span className="block font-headline font-bold text-[11px] text-[#671800] tracking-[0.05em] uppercase mb-6">
+                AFFILIATE SUPPORT
               </span>
-              <h2 className="font-heading text-3xl font-extrabold uppercase tracking-tight text-primary md:text-4xl lg:text-5xl">
+              <h2 className="text-4xl font-headline font-bold text-[#161c20] leading-tight mb-8">
                 Support Systems, For Both Clients and Trainers
               </h2>
-              <ul className="flex flex-col gap-4">
+              <p className="text-[#41627b] font-body leading-relaxed mb-8">
+                Our affiliate program is designed for success. We don&apos;t just provide links;
+                our trainers are enabled with personalized portals, easy-to-generate codes and the
+                best products, starting with Research Peptides.
+              </p>
+              <div className="space-y-4">
                 {SUPPORT_BULLETS.map((bullet) => (
-                  <li key={bullet} className="flex items-start gap-3">
-                    <span className="material-symbols-outlined mt-0.5 text-hyrox-orange">
+                  <div
+                    key={bullet}
+                    className="flex items-center gap-4 py-3 border-b border-[#c2c7cd]/10"
+                  >
+                    <span
+                      className="material-symbols-outlined text-[#671800] text-sm"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
                       check_circle
                     </span>
-                    <span className="text-base leading-relaxed text-stitch-on-surface-variant md:text-lg">
+                    <span className="text-sm font-headline font-bold uppercase tracking-wider text-[#161c20]">
                       {bullet}
                     </span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </section>

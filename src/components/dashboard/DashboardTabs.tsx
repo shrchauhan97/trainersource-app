@@ -22,8 +22,12 @@ export function DashboardTabs({ disabled = false }: DashboardTabsProps) {
   const pathname = usePathname();
 
   return (
-    <nav className="overflow-x-auto" aria-disabled={disabled || undefined}>
-      <div className="inline-flex min-w-full gap-2 rounded-[1.5rem] border border-white/10 bg-[#173041] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+    <nav className="overflow-x-auto">
+      <div
+        className="inline-flex min-w-full gap-2 rounded-[1.5rem] border border-white/10 bg-[#173041] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+        role="tablist"
+        aria-disabled={disabled || undefined}
+      >
         {tabs.map((tab) => {
           if (disabled) {
             return (
