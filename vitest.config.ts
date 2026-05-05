@@ -14,6 +14,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: [
+      'tests/unit/**/*.test.ts',
       'tests/integration/**/*.test.ts',
       'tests/lib/**/*.test.ts',
       'tests/api/**/*.test.ts',
