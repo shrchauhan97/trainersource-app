@@ -14,7 +14,7 @@
   if (window.UP_COMMUNITY_PULSE_LOADED) return;
   window.UP_COMMUNITY_PULSE_LOADED = true;
 
-  var apiBase = window.UP_PORTAL_BASE || 'https://trainersource-app.vercel.app';
+  var apiBase = window.UP_PORTAL_BASE || 'https://trainer-source.com';
 
   function init() {
     var path = location.pathname.replace(/^\/+|\/+$/g, '');

@@ -8,7 +8,7 @@ import { Resend } from 'resend';
 // Override per-env via RESEND_FROM (e.g. once trainer-source.com is verified).
 const FROM = process.env.RESEND_FROM ?? 'TrainerSource <trainersource@ultimate-peptides.com>';
 const REPLY_TO = process.env.RESEND_REPLY_TO ?? 'support@ultimate-peptides.com';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://trainersource-app.vercel.app';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://trainer-source.com';
 
 let resendClient: Resend | null = null;
 
