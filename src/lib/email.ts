@@ -1,9 +1,13 @@
 import { Resend } from 'resend';
 
-// Sender address. `notifications@` keeps order/commission alerts out of the
-// general `hello@` inbox. Override per-environment via env if needed.
-const FROM = process.env.RESEND_FROM ?? 'TrainerSource <notifications@trainersource.app>';
-const REPLY_TO = process.env.RESEND_REPLY_TO ?? 'hello@trainersource.app';
+// Sender address. We send from the ultimate-peptides.com domain (already
+// verified on Resend's free tier) with TrainerSource branding in the display
+// name as an interim until trainer-source.com is wired to Vercel and Resend
+// is upgraded to Pro to verify the second domain. `trainersource@up.com`
+// makes the purpose obvious to recipients despite the UP-domain sender.
+// Override per-env via RESEND_FROM (e.g. once trainer-source.com is verified).
+const FROM = process.env.RESEND_FROM ?? 'TrainerSource <trainersource@ultimate-peptides.com>';
+const REPLY_TO = process.env.RESEND_REPLY_TO ?? 'support@ultimate-peptides.com';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://trainersource-app.vercel.app';
 
 let resendClient: Resend | null = null;
