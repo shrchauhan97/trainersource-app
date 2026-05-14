@@ -96,6 +96,15 @@ export async function issueTrainerCode(
       // Behaviour-preserving: the original route returned the freshly-generated
       // `code` (local variable) rather than the row's `data.code`. We keep that
       // semantic so existing tests and callers stay stable.
+      // Wave 5 (T2.1) — share-link URL fix.
+      //   landing_url: direct-to-gate, customer enters with code prefilled.
+      //                Use for QR codes, BC links, internal admin handoffs.
+      //   deep_link:   BRANDED trainer landing on TS. Use for "Copy share link"
+      //                in the bot, dashboard, anywhere a real human will see
+      //                the URL. Shows trainer name + OG card on social shares.
+      //                CTA there bounces to ${upBase}?ref=${code}.
+      //   Previously deep_link pointed at ${upBase}/code/${code} which 404'd
+      //   on BC. Real customer (Irfan Sulaiman) failed on this 2026-05-13.
       return {
         ok: true,
         result: {
@@ -103,7 +112,7 @@ export async function issueTrainerCode(
           code,
           label: data.label,
           landing_url: `${upBase}?ref=${code}`,
-          deep_link: `${upBase}/code/${code}`,
+          deep_link: `${portalBase}/r/${code}`,
           qr_url: `${portalBase}/api/qr/${code}`,
           expires_at: data.expires_at,
         },

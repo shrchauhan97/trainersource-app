@@ -135,10 +135,12 @@ export default async function ReferralPage({ params }: Props) {
     );
   }
 
-  // Canonical deep-link pattern: the BC storefront's gate-handler.js (already
-  // deployed) reads `/code/<CODE>` and prefills the gate form. This is the
-  // same pattern used by issue-code.ts and the QR code generator.
-  const deepLink = `${UP_BASE}/code/${encodeURIComponent(referral.code)}`;
+  // Wave 5 (T2.1) — canonical share-link pattern is /r/<CODE> on TS (this
+  // page) → CTA jumps to ${UP}?ref=<CODE>. bc-paste.js reads ?ref= on gate
+  // render and prefills the access-code input. Previously this CTA pointed at
+  // ${UP}/code/<CODE> which BC 404'd — a comment on the prior line lied about
+  // a `gate-handler.js` deployment that never existed. Killed that fiction.
+  const deepLink = `${UP_BASE}?ref=${encodeURIComponent(referral.code)}`;
 
   return (
     <main className="min-h-screen bg-[#f4faff] font-body">

@@ -81,7 +81,9 @@ describe('POST /api/trainer/issue-code', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.code).toMatch(/^SARAH-YOGA-[A-Z0-9]{4}$/);
-    expect(body.deep_link).toMatch(/ultimate-peptides\.com\/code\/SARAH-YOGA-/);
+    // Wave 5 T2.1 — deep_link is now the branded TS landing /r/<CODE>, not
+    // the broken ${UP}/code/<CODE>. landing_url stays as direct-to-gate.
+    expect(body.deep_link).toMatch(/trainer-source\.com\/r\/SARAH-YOGA-/);
     expect(body.landing_url).toMatch(/ref=SARAH-YOGA-/);
     expect(body.qr_url).toMatch(/\/api\/qr\//);
   });
