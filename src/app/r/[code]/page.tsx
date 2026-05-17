@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createServiceClient } from '@/lib/supabase/service';
+import { resolveUrlEnv } from '@/lib/env-url';
 import type { AccessCode, Trainer } from '@/lib/types';
 
 // Force dynamic — the page resolves a code via DB lookup on every request.
@@ -9,8 +10,8 @@ import type { AccessCode, Trainer } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 const CODE_RE = /^[A-Z0-9-]{4,40}$/;
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://trainer-source.com';
-const UP_BASE = process.env.NEXT_PUBLIC_UP_BASE_URL ?? 'https://ultimate-peptides.com';
+const SITE_URL = resolveUrlEnv(process.env.NEXT_PUBLIC_SITE_URL, 'https://trainer-source.com');
+const UP_BASE = resolveUrlEnv(process.env.NEXT_PUBLIC_UP_BASE_URL, 'https://ultimate-peptides.com');
 
 type Props = {
   params: Promise<{ code: string }>;

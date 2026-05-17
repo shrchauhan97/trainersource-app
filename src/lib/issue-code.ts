@@ -10,6 +10,7 @@
 // tests.
 import { randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveUrlEnv } from '@/lib/env-url';
 
 const RANDOM_SUFFIX_LEN = 4;
 const SLUG_MAX = 24;
@@ -90,9 +91,14 @@ export async function issueTrainerCode(
       .single<{ id: string; code: string; label: string; expires_at: string }>();
 
     if (!error && data) {
-      const portalBase =
-        process.env.NEXT_PUBLIC_PORTAL_BASE_URL ?? 'https://trainer-source.com';
-      const upBase = process.env.NEXT_PUBLIC_UP_BASE_URL ?? 'https://ultimate-peptides.com';
+      const portalBase = resolveUrlEnv(
+        process.env.NEXT_PUBLIC_PORTAL_BASE_URL,
+        'https://trainer-source.com',
+      );
+      const upBase = resolveUrlEnv(
+        process.env.NEXT_PUBLIC_UP_BASE_URL,
+        'https://ultimate-peptides.com',
+      );
       // Behaviour-preserving: the original route returned the freshly-generated
       // `code` (local variable) rather than the row's `data.code`. We keep that
       // semantic so existing tests and callers stay stable.

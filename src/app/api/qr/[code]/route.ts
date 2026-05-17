@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { resolveUrlEnv } from '@/lib/env-url';
 
 export const runtime = 'nodejs';
 
@@ -17,8 +18,10 @@ export async function GET(
   // Found page even though the gate JS still rendered on top. Encode the
   // branded TS landing instead — same flow as "Copy share link", and QR scans
   // benefit most from the trust wrapper since scanners show no OG preview.
-  const portalBase =
-    process.env.NEXT_PUBLIC_PORTAL_BASE_URL ?? 'https://trainer-source.com';
+  const portalBase = resolveUrlEnv(
+    process.env.NEXT_PUBLIC_PORTAL_BASE_URL,
+    'https://trainer-source.com',
+  );
   const deepLink = `${portalBase}/r/${code}`;
   const buffer = await QRCode.toBuffer(deepLink, {
     width: 300,
