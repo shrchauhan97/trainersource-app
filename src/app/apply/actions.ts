@@ -1,7 +1,39 @@
 'use server';
 
+import { newTrainerApplicationEmail, sendEmail } from '@/lib/email';
 import { createServiceClient } from '@/lib/supabase/service';
 import { COMMISSION_FIRST_SALE, COMMISSION_REORDER, MAX_CLIENTS_DEFAULT } from '@/lib/constants';
+
+// Fire-and-forget admin fan-out. Failures must never break /apply — the
+// application row is the source of truth; email is a courtesy ping.
+async function notifyAdminsOfApplication(payload: {
+  trainerName: string;
+  trainerEmail: string;
+  city: string;
+  country: string;
+  niche?: string | null;
+  socialMedia?: string | null;
+}): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { data: admins, error } = await supabase.from('admins').select('email');
+    if (error) {
+      console.error('[apply] could not load admin list', error);
+      return;
+    }
+    if (!admins?.length) return;
+
+    const { subject, html } = newTrainerApplicationEmail(payload);
+    await Promise.allSettled(
+      admins
+        .map((a) => (a.email as string | null)?.trim())
+        .filter((addr): addr is string => Boolean(addr))
+        .map((to) => sendEmail({ to, subject, html }))
+    );
+  } catch (err) {
+    console.error('[apply] notifyAdminsOfApplication threw', err);
+  }
+}
 
 // Maps raw Postgres errors to copy that doesn't leak schema details to
 // applicants. Anything not in this table gets a generic retry message —
@@ -106,6 +138,15 @@ export async function submitApplication(formData: FormData) {
     console.error('Error inserting application:', error);
     return { error: friendlyDbError(error) };
   }
+
+  void notifyAdminsOfApplication({
+    trainerName: name,
+    trainerEmail: email,
+    city,
+    country,
+    niche: niche || null,
+    socialMedia: social_media || null,
+  });
 
   return { success: true, data };
 }

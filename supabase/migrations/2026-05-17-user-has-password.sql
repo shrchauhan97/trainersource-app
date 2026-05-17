@@ -15,7 +15,11 @@
 CREATE OR REPLACE FUNCTION public.user_has_password(uid uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, auth, pg_temp
 AS $$
-  SELECT encrypted_password IS NOT NULL FROM auth.users WHERE id = uid
+  -- Self-only: caller can only check whether THEIR own auth row has a
+  -- password set. Passing any other uuid returns NULL (no rows match).
+  SELECT encrypted_password IS NOT NULL
+  FROM auth.users
+  WHERE id = uid AND id = auth.uid()
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.user_has_password(uuid) FROM PUBLIC;
