@@ -48,7 +48,7 @@ test.describe('Public Pages', () => {
     expect(response).not.toBeNull();
     expect(response?.status()).toBe(200);
     await expect(page.getByLabel(/email address/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /send magic link|sign in/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue|send magic link|sign in/i })).toBeVisible();
     await expect(page.getByText(/TrainerSource/i)).toBeVisible();
   });
 });

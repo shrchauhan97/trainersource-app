@@ -75,6 +75,14 @@ async function getTrainerBySession() {
     redirect('/apply');
   }
 
+  // Suspended trainers must not retain a usable session even if they
+  // somehow obtained one (rotated allowlist, signInWithPassword bypass,
+  // status flipped mid-session). Kill the session and bounce.
+  if ((trainer as Trainer).status === 'suspended') {
+    await supabase.auth.signOut();
+    redirect('/login?error=suspended');
+  }
+
   return { supabase, trainer: trainer as Trainer };
 }
 

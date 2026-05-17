@@ -293,3 +293,51 @@ export function firstOrderEmail(input: {
     html: shell('Your first commission landed.', body, { label: 'View commissions', href: `${getSiteUrl()}/dashboard/commissions` }),
   };
 }
+
+export function newTrainerApplicationEmail(input: {
+  trainerName: string;
+  trainerEmail: string;
+  city: string;
+  country: string;
+  niche?: string | null;
+  socialMedia?: string | null;
+}) {
+  const subject = `New trainer application — ${input.trainerName}`;
+  const trainerName = htmlEscape(input.trainerName);
+  const trainerEmail = htmlEscape(input.trainerEmail);
+  const city = htmlEscape(input.city);
+  const country = htmlEscape(input.country);
+  const niche = input.niche ? htmlEscape(input.niche) : '';
+  const social = input.socialMedia ? htmlEscape(input.socialMedia) : '';
+
+  const optionalRows = `${
+    niche
+      ? `<tr><td style="padding:6px 16px 6px 0;font-size:12px;color:#41627b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Niche</td><td style="padding:6px 0;font-size:14px;color:#173041;">${niche}</td></tr>`
+      : ''
+  }${
+    social
+      ? `<tr><td style="padding:6px 16px 6px 0;font-size:12px;color:#41627b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Social</td><td style="padding:6px 0;font-size:14px;color:#173041;">${social}</td></tr>`
+      : ''
+  }`;
+
+  const body = `
+    <p style="margin:0 0 16px 0;font-size:15px;line-height:1.6;color:#2D4F67;">
+      <strong>${trainerName}</strong> just submitted an application to join TrainerSource.
+    </p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border-collapse:collapse;">
+      <tr><td style="padding:6px 16px 6px 0;font-size:12px;color:#41627b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Email</td><td style="padding:6px 0;font-size:14px;color:#173041;">${trainerEmail}</td></tr>
+      <tr><td style="padding:6px 16px 6px 0;font-size:12px;color:#41627b;text-transform:uppercase;letter-spacing:0.12em;font-weight:700;">Location</td><td style="padding:6px 0;font-size:14px;color:#173041;">${city}, ${country}</td></tr>
+      ${optionalRows}
+    </table>
+    <p style="margin:0 0 24px 0;font-size:14px;line-height:1.6;color:#41627b;">
+      Review the application and Approve to move them into onboarding, or Activate to grant immediate access.
+    </p>
+  `;
+  return {
+    subject,
+    html: shell('A trainer is waiting on you.', body, {
+      label: 'Review application',
+      href: `${getSiteUrl()}/admin/trainers`,
+    }),
+  };
+}

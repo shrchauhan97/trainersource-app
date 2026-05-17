@@ -1,7 +1,68 @@
 'use server';
 
+import { after } from 'next/server';
+
+import { newTrainerApplicationEmail, sendEmail } from '@/lib/email';
 import { createServiceClient } from '@/lib/supabase/service';
 import { COMMISSION_FIRST_SALE, COMMISSION_REORDER, MAX_CLIENTS_DEFAULT } from '@/lib/constants';
+
+// Fire-and-forget admin fan-out. Failures must never break /apply — the
+// application row is the source of truth; email is a courtesy ping. We
+// schedule via next/server `after()` so the runtime keeps the lambda
+// alive until the sends resolve (a plain `void notifyAdmins(...)` after
+// the action returns can be cut off when Vercel freezes the instance).
+async function notifyAdminsOfApplication(payload: {
+  trainerName: string;
+  trainerEmail: string;
+  city: string;
+  country: string;
+  niche?: string | null;
+  socialMedia?: string | null;
+}): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+    const { data: admins, error } = await supabase.from('admins').select('email');
+    if (error) {
+      console.error('[apply] could not load admin list', error);
+      return;
+    }
+    if (!admins?.length) {
+      console.warn('[apply] no admins to notify of new application');
+      return;
+    }
+
+    const recipients = admins
+      .map((a) => (a.email as string | null)?.trim())
+      .filter((addr): addr is string => Boolean(addr));
+    if (recipients.length === 0) {
+      console.warn('[apply] admins table has rows but no usable email column');
+      return;
+    }
+
+    const { subject, html } = newTrainerApplicationEmail(payload);
+    const results = await Promise.allSettled(
+      recipients.map((to) => sendEmail({ to, subject, html }))
+    );
+    const succeeded = results.filter(
+      (r) => r.status === 'fulfilled' && r.value.ok
+    ).length;
+    const failed = results.length - succeeded;
+    if (failed > 0) {
+      console.error('[apply] admin notification fan-out partial failure', {
+        succeeded,
+        failed,
+        total: results.length,
+        details: results
+          .map((r, i) => (r.status === 'rejected' ? { recipient: recipients[i], reason: String(r.reason) } : r.status === 'fulfilled' && !r.value.ok ? { recipient: recipients[i], reason: r.value.error } : null))
+          .filter(Boolean),
+      });
+    } else {
+      console.info('[apply] admin notification fan-out delivered', { count: succeeded });
+    }
+  } catch (err) {
+    console.error('[apply] notifyAdminsOfApplication threw', err);
+  }
+}
 
 // Maps raw Postgres errors to copy that doesn't leak schema details to
 // applicants. Anything not in this table gets a generic retry message —
@@ -66,14 +127,30 @@ export async function submitApplication(formData: FormData) {
   
   let isUnique = false;
   let counter = 1;
-  
+
   while (!isUnique) {
-    const { data } = await supabase
+    // `.single()` returns error code PGRST116 when no row matches — that
+    // case is "slug is free, take it". Any other error code is a real DB
+    // failure (timeout, RLS, network) and we must NOT silently treat the
+    // empty result as "unique" or we risk inserting a duplicate slug.
+    const { data, error } = await supabase
       .from('trainers')
       .select('id')
       .eq('slug', slug)
-      .single();
-      
+      .maybeSingle();
+
+    if (error) {
+      console.error('[apply] slug uniqueness probe failed', {
+        slug,
+        code: error.code,
+        message: error.message,
+      });
+      return {
+        error:
+          'We hit a snag checking your profile slug. Please try again in a moment, or email hello@trainersource.app.',
+      };
+    }
+
     if (!data) {
       isUnique = true;
     } else {
@@ -106,6 +183,17 @@ export async function submitApplication(formData: FormData) {
     console.error('Error inserting application:', error);
     return { error: friendlyDbError(error) };
   }
+
+  after(() =>
+    notifyAdminsOfApplication({
+      trainerName: name,
+      trainerEmail: email,
+      city,
+      country,
+      niche: niche || null,
+      socialMedia: social_media || null,
+    })
+  );
 
   return { success: true, data };
 }
