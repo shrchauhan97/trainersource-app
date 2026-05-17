@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 
@@ -39,7 +39,6 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
   const [info, setInfo] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [, startTransition] = useTransition();
 
   const callbackError = useMemo(() => {
     if (!errorKey) return null;
@@ -52,7 +51,7 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
     setMagicSent(false);
   }
 
-  function handleEmailSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
+  async function handleEmailSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
     resetMessages();
 
@@ -63,23 +62,21 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
     }
 
     setIsSubmitting(true);
-    startTransition(async () => {
-      try {
-        const result = await checkEmailAllowed(normalizedEmail);
-        if (!result.allowed) {
-          setError(checkErrorMessages[result.reason]);
-          return;
-        }
-        setEmail(normalizedEmail);
-        setHasPassword(result.hasPassword);
-        setStep('password');
-        if (!result.hasPassword) {
-          await sendMagicLink(normalizedEmail);
-        }
-      } finally {
-        setIsSubmitting(false);
+    try {
+      const result = await checkEmailAllowed(normalizedEmail);
+      if (!result.allowed) {
+        setError(checkErrorMessages[result.reason]);
+        return;
       }
-    });
+      setEmail(normalizedEmail);
+      setHasPassword(result.hasPassword);
+      setStep('password');
+      if (!result.hasPassword) {
+        await sendMagicLink(normalizedEmail);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function sendMagicLink(addr: string, intent?: 'reset') {

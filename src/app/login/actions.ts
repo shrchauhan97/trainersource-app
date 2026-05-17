@@ -18,14 +18,22 @@ export type SignInResult =
   | { ok: true; next: string }
   | { ok: false; reason: 'invalid_credentials' | 'not_authorized' | 'suspended' | 'server_error' };
 
+// Per-instance, per-bucket-prefix token bucket. Reset every WINDOW_MS.
+// Buckets are keyed `<prefix>:<ip>` so the email-check and password-
+// signin throttles don't share quota — a user who probed 10 emails
+// can still try their password without an immediate lockout.
+//
+// Known limitation (tracked for a follow-up infra PR): this is local
+// to the Node instance; effective limit scales with concurrent lambdas.
+// Move to Vercel KV / Upstash when we settle on a shared store.
 const BUCKET = new Map<string, { count: number; resetAt: number }>();
 const LIMIT = 10;
 const WINDOW_MS = 60_000;
 const MAX_BUCKET_KEYS = 5_000;
+let unknownIpWarned = false;
 
 function rateLimit(key: string): boolean {
   const now = Date.now();
-  // Cheap eviction: only walk on insert when bucket grows past the cap.
   if (BUCKET.size > MAX_BUCKET_KEYS) {
     for (const [k, v] of BUCKET) {
       if (v.resetAt < now) BUCKET.delete(k);
@@ -49,14 +57,29 @@ async function clientIp(): Promise<string | null> {
   return xff || real || null;
 }
 
+// Fail-CLOSED on unknown IP — a misconfigured proxy that strips
+// x-forwarded-for must not silently disable the throttle. On Vercel
+// the header is always set; an unknown-IP request is therefore a
+// configuration smell worth logging the first time we see it.
+async function rateLimitOrReject(bucketPrefix: 'email' | 'signin'): Promise<boolean> {
+  const ip = await clientIp();
+  if (!ip) {
+    if (!unknownIpWarned) {
+      console.warn('[login/actions] no client IP available — failing closed on rate limit');
+      unknownIpWarned = true;
+    }
+    return false;
+  }
+  return rateLimit(`${bucketPrefix}:${ip}`);
+}
+
 export async function checkEmailAllowed(rawEmail: string): Promise<CheckEmailResult> {
   const email = (rawEmail || '').trim().toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { allowed: false, reason: 'invalid' };
   }
 
-  const ip = await clientIp();
-  if (ip && !rateLimit(ip)) {
+  if (!(await rateLimitOrReject('email'))) {
     return { allowed: false, reason: 'rate_limited' };
   }
 
@@ -119,15 +142,21 @@ export async function signInWithPasswordAction(
     return { ok: false, reason: 'invalid_credentials' };
   }
 
-  const ip = await clientIp();
-  if (ip && !rateLimit(ip)) {
+  if (!(await rateLimitOrReject('signin'))) {
     return { ok: false, reason: 'server_error' };
   }
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error || !data.session || !data.user?.email) {
-    if (error && error.message !== 'Invalid login credentials') {
+    // Match on Supabase's typed error.code (or HTTP 400) — the message
+    // string is localized + reworded across SDK versions and would
+    // silently flip "wrong password" into "server error" on rewrite.
+    const isInvalidCredentials =
+      error?.code === 'invalid_credentials' ||
+      error?.status === 400 ||
+      (!error && (!data.session || !data.user?.email));
+    if (error && !isInvalidCredentials) {
       console.error('[signInWithPassword] non-credential error', {
         email,
         code: error.code,

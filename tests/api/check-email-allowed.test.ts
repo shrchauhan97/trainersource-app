@@ -5,10 +5,15 @@ const mockRpc = vi.fn();
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: () => ({ from: mockFrom, rpc: mockRpc }),
 }));
+// Unique source IP per call so the per-instance rate-limit bucket
+// doesn't carry quota between tests. The rate-limit assertion below
+// re-mocks with a fixed IP for its specific test.
+const { ipTick } = vi.hoisted(() => ({ ipTick: { n: 0 } }));
 vi.mock('next/headers', () => ({
   headers: () =>
     Promise.resolve({
-      get: (name: string) => (name === 'x-forwarded-for' ? '203.0.113.42' : null),
+      get: (name: string) =>
+        name === 'x-forwarded-for' ? `203.0.113.${++ipTick.n}` : null,
     }),
 }));
 
@@ -150,20 +155,38 @@ describe('checkEmailAllowed', () => {
     expect(result).toEqual({ allowed: false, reason: 'server_error' });
   });
 
-  it('rate-limits after LIMIT requests from same IP within window', async () => {
-    mockFrom.mockImplementation((table: string) => {
+});
+
+// Rate-limit assertion gets its own describe so we can isolate the
+// module-level BUCKET. Without resetModules() the bucket here would
+// already be past LIMIT from preceding tests and the assertion would
+// pass for the wrong reason.
+describe('checkEmailAllowed — rate limit', () => {
+  it('rejects with rate_limited once same IP exceeds LIMIT in the window', async () => {
+    vi.resetModules();
+    const freshFrom = vi.fn((table: string) => {
       if (table === 'admins') return adminsRow(null);
       if (table === 'trainers') return trainersRow(null);
       throw new Error('unexpected table: ' + table);
     });
-    // Spread emails so each is treated as a distinct lookup but all from
-    // the same IP fixture.
-    const calls = await Promise.all(
-      Array.from({ length: 12 }, (_, i) => checkEmailAllowed(`u${i}@example.com`))
-    );
-    const limited = calls.filter(
-      (r) => !r.allowed && r.reason === 'rate_limited'
-    );
-    expect(limited.length).toBeGreaterThan(0);
+    vi.doMock('@/lib/supabase/service', () => ({
+      createServiceClient: () => ({ from: freshFrom, rpc: vi.fn() }),
+    }));
+    vi.doMock('next/headers', () => ({
+      headers: () =>
+        Promise.resolve({
+          get: (name: string) => (name === 'x-forwarded-for' ? '198.51.100.7' : null),
+        }),
+    }));
+    const { checkEmailAllowed: fresh } = await import('@/app/login/actions');
+
+    const results: Array<Awaited<ReturnType<typeof fresh>>> = [];
+    for (let i = 0; i < 12; i++) {
+      results.push(await fresh(`u${i}@example.com`));
+    }
+    const allowedCount = results.filter((r) => !('reason' in r) || r.reason !== 'rate_limited').length;
+    const limitedCount = results.length - allowedCount;
+    expect(allowedCount).toBe(10);
+    expect(limitedCount).toBe(2);
   });
 });

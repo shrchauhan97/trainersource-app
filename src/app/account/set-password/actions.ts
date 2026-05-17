@@ -29,6 +29,11 @@ export async function setPassword(formData: FormData): Promise<SetPasswordResult
     error: userError,
   } = await supabase.auth.getUser();
   if (userError || !user?.email) {
+    console.error('[set-password] getUser failed or missing email', {
+      hasUser: Boolean(user),
+      hasEmail: Boolean(user?.email),
+      message: userError?.message,
+    });
     redirect('/login?error=auth_callback_failed');
   }
 

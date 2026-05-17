@@ -127,14 +127,30 @@ export async function submitApplication(formData: FormData) {
   
   let isUnique = false;
   let counter = 1;
-  
+
   while (!isUnique) {
-    const { data } = await supabase
+    // `.single()` returns error code PGRST116 when no row matches — that
+    // case is "slug is free, take it". Any other error code is a real DB
+    // failure (timeout, RLS, network) and we must NOT silently treat the
+    // empty result as "unique" or we risk inserting a duplicate slug.
+    const { data, error } = await supabase
       .from('trainers')
       .select('id')
       .eq('slug', slug)
-      .single();
-      
+      .maybeSingle();
+
+    if (error) {
+      console.error('[apply] slug uniqueness probe failed', {
+        slug,
+        code: error.code,
+        message: error.message,
+      });
+      return {
+        error:
+          'We hit a snag checking your profile slug. Please try again in a moment, or email hello@trainersource.app.',
+      };
+    }
+
     if (!data) {
       isUnique = true;
     } else {
