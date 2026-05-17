@@ -12,8 +12,14 @@ export async function GET(
   if (!CODE_RE.test(code)) {
     return new Response('invalid code', { status: 400 });
   }
-  const upBase = process.env.NEXT_PUBLIC_UP_BASE_URL ?? 'https://ultimate-peptides.com';
-  const deepLink = `${upBase}/code/${code}`;
+  // T2.1 follow-up — match issueTrainerCode's deep_link (PR #25). The earlier
+  // `${UP}/code/${code}` target 404s on BC; scans landed customers on a Not
+  // Found page even though the gate JS still rendered on top. Encode the
+  // branded TS landing instead — same flow as "Copy share link", and QR scans
+  // benefit most from the trust wrapper since scanners show no OG preview.
+  const portalBase =
+    process.env.NEXT_PUBLIC_PORTAL_BASE_URL ?? 'https://trainer-source.com';
+  const deepLink = `${portalBase}/r/${code}`;
   const buffer = await QRCode.toBuffer(deepLink, {
     width: 300,
     margin: 2,
