@@ -83,16 +83,21 @@ describe('assertProductionEmailReady', () => {
     expect(() => assertProductionEmailReady()).toThrow(/RESEND_API_KEY/);
   });
 
-  it('throws in production when RESEND_FROM is missing', () => {
+  it('does NOT throw when RESEND_FROM is missing — falls back to hard-coded prod default', () => {
+    // 2026-05-17 audit: the previous version of this assert required
+    // RESEND_FROM, which made the hard-coded fallback in getFrom() dead
+    // code and silently broke every production email send when the env
+    // var wasn't set (which was the actual production config). The
+    // contract is: optional override via env, safe default otherwise.
     stubProductionEnv();
     vi.stubEnv('RESEND_FROM', '');
-    expect(() => assertProductionEmailReady()).toThrow(/RESEND_FROM/);
+    expect(() => assertProductionEmailReady()).not.toThrow();
   });
 
-  it('throws in production when RESEND_REPLY_TO is missing', () => {
+  it('does NOT throw when RESEND_REPLY_TO is missing — falls back to hard-coded prod default', () => {
     stubProductionEnv();
     vi.stubEnv('RESEND_REPLY_TO', '');
-    expect(() => assertProductionEmailReady()).toThrow(/RESEND_REPLY_TO/);
+    expect(() => assertProductionEmailReady()).not.toThrow();
   });
 
   it('throws in production when NEXT_PUBLIC_SITE_URL is missing', () => {
@@ -101,7 +106,7 @@ describe('assertProductionEmailReady', () => {
     expect(() => assertProductionEmailReady()).toThrow(/NEXT_PUBLIC_SITE_URL/);
   });
 
-  it('lists all missing vars in one error', () => {
+  it('lists all missing required vars in one error', () => {
     vi.stubEnv('VERCEL_ENV', 'production');
     // Leave every email-config var blank.
     let caught: Error | null = null;
@@ -112,9 +117,11 @@ describe('assertProductionEmailReady', () => {
     }
     expect(caught).not.toBeNull();
     expect(caught?.message).toMatch(/RESEND_API_KEY/);
-    expect(caught?.message).toMatch(/RESEND_FROM/);
-    expect(caught?.message).toMatch(/RESEND_REPLY_TO/);
     expect(caught?.message).toMatch(/NEXT_PUBLIC_SITE_URL/);
+    // RESEND_FROM and RESEND_REPLY_TO are NOT required — they have safe
+    // hard-coded production defaults. Confirm we no longer demand them.
+    expect(caught?.message).not.toMatch(/RESEND_FROM/);
+    expect(caught?.message).not.toMatch(/RESEND_REPLY_TO/);
   });
 
   it('passes when fully configured in production', () => {
@@ -180,6 +187,26 @@ describe('sendEmail — env-aware FROM / REPLY_TO', () => {
     const call = sendSpy.mock.calls[0][0];
     expect(call.from).toBe('TrainerSource <support@trainer-source.com>');
     expect(call.replyTo).toBe('support@trainer-source.com');
+  });
+
+  it('uses hard-coded prod FROM/REPLY_TO when in production and env overrides unset', async () => {
+    // Regression test for the 2026-05-17 bug: a stricter assert in
+    // assertProductionEmailReady() previously demanded RESEND_FROM and
+    // RESEND_REPLY_TO be set in prod, making the hard-coded fallbacks
+    // unreachable and silently breaking every production email send.
+    // Now: only RESEND_API_KEY + NEXT_PUBLIC_SITE_URL are required; the
+    // sender / reply-to fall back to the on-brand defaults.
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('RESEND_API_KEY', 'rsd_prod_key');
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://trainer-source.com');
+    // RESEND_FROM and RESEND_REPLY_TO intentionally left unset.
+
+    await sendEmail({ to: 'x@example.com', subject: 's', html: '<p>h</p>' });
+
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const call = sendSpy.mock.calls[0][0];
+    expect(call.from).toBe('TrainerSource <trainersource@ultimate-peptides.com>');
+    expect(call.replyTo).toBe('support@ultimate-peptides.com');
   });
 
   it('uses preview placeholder FROM/REPLY_TO when VERCEL_ENV=preview and env vars unset', async () => {
