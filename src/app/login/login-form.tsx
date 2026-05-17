@@ -252,9 +252,17 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
             )}
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                // type=button alone should be enough to prevent the parent
+                // <form onSubmit={handlePasswordSubmit}> from firing, but the
+                // 2026-05-17 prod verification observed clicks that didn't
+                // visibly reset the form. Belt-and-suspenders.
+                e.preventDefault();
+                e.stopPropagation();
                 setStep('email');
                 setPassword('');
+                setHasPassword(false);
+                setMagicSent(false);
                 resetMessages();
               }}
               className="text-xs font-medium uppercase tracking-[0.18em] text-clinical-slate/50 hover:text-clinical-slate"

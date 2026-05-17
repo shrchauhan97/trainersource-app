@@ -78,13 +78,19 @@ export function getSiteUrl(): string {
  * missing. Called from the send path so a misconfigured prod deploy crashes
  * the request (and logs a stack) instead of silently falling back to a
  * hard-coded default. The test suite drives this directly.
+ *
+ * Only env vars WITHOUT safe production defaults are required here.
+ * `RESEND_FROM` and `RESEND_REPLY_TO` both have hard-coded prod fallbacks
+ * in getFrom()/getReplyTo() above, so requiring them here would have made
+ * the fallbacks unreachable — exactly the trap that silently broke every
+ * production email send for ~28 days until the 2026-05-17 audit caught it.
+ * If you want to OVERRIDE the defaults, set the env vars; if you do nothing,
+ * the defaults ship correctly.
  */
 export function assertProductionEmailReady(): void {
   if (!isProductionEnv()) return;
   const missing: string[] = [];
   if (!readEnv('RESEND_API_KEY')) missing.push('RESEND_API_KEY');
-  if (!readEnv('RESEND_FROM')) missing.push('RESEND_FROM');
-  if (!readEnv('RESEND_REPLY_TO')) missing.push('RESEND_REPLY_TO');
   if (!readEnv('NEXT_PUBLIC_SITE_URL')) missing.push('NEXT_PUBLIC_SITE_URL');
   if (missing.length > 0) {
     throw new Error(

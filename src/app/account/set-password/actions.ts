@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { getUserRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceClient } from '@/lib/supabase/service';
 
 import { PASSWORD_HINT, PASSWORD_REGEX } from './password-policy';
 import { safeNext } from './safe-next';
@@ -58,6 +59,27 @@ export async function setPassword(formData: FormData): Promise<SetPasswordResult
   if (updateError) {
     console.error('[set-password] updateUser failed', { uid: user.id, message: updateError.message });
     return { error: "We couldn't save that password. Try a different one or contact support." };
+  }
+
+  // Mark password as user-set in OUR table so user_has_password() returns
+  // true on subsequent sign-ins. We cannot rely on auth.users.encrypted_password
+  // alone — Supabase pre-populates that column with an unknowable placeholder
+  // during OTP signup, so it is always non-NULL. See migration 2026-05-18.
+  const service = createServiceClient();
+  const table = role === 'admin' ? 'admins' : 'trainers';
+  const { error: stampError } = await service
+    .from(table)
+    .update({ password_set_at: new Date().toISOString() })
+    .eq('email', user.email);
+  if (stampError) {
+    // Non-fatal: the auth.users update already succeeded, the user can sign
+    // in with their password right now. The only downside is they'll be
+    // prompted to set-password again on next sign-in. Log loud so we notice.
+    console.error('[set-password] failed to stamp password_set_at', {
+      table,
+      email: user.email,
+      message: stampError.message,
+    });
   }
 
   redirect(next);
