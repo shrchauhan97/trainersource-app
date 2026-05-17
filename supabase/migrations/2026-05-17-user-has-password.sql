@@ -6,11 +6,11 @@
 -- /account/set-password before /dashboard or /admin.
 --
 -- auth.users is not directly readable by anon/authenticated, so we wrap
--- the lookup in a SECURITY DEFINER function and grant EXECUTE to
--- authenticated only. The function only reveals a boolean about the
--- caller's own row in practice — but is intentionally not constrained to
--- self only, because the post-callback code runs with a session for the
--- user being checked anyway.
+-- the lookup in a SECURITY DEFINER function. It is HARD-CONSTRAINED to
+-- self-only via `id = auth.uid()` inside the body — passing any other
+-- uuid returns NULL (no rows match). Do not remove the `auth.uid()`
+-- predicate: it is the difference between "self password-status check"
+-- and a user-enumeration oracle.
 
 CREATE OR REPLACE FUNCTION public.user_has_password(uid uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, auth, pg_temp

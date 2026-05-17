@@ -5,7 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 
 import { createClient } from '@/lib/supabase/client';
 
-import { checkEmailAllowed, type CheckEmailResult } from './actions';
+import { checkEmailAllowed, signInRedirect, type CheckEmailResult } from './actions';
 
 const callbackErrorMessages: Record<string, string> = {
   auth_callback_failed: 'We could not complete sign in. Please request a new magic link.',
@@ -13,11 +13,15 @@ const callbackErrorMessages: Record<string, string> = {
   suspended: 'Your account has been suspended. Contact support to restore access.',
 };
 
-const checkErrorMessages: Record<NonNullable<Exclude<CheckEmailResult, { allowed: true }>['reason']>, string> = {
+const checkErrorMessages: Record<
+  NonNullable<Exclude<CheckEmailResult, { allowed: true }>['reason']>,
+  string
+> = {
   not_authorized: 'Your email is not authorized to access TrainerSource.',
   suspended: 'Your account has been suspended. Contact support to restore access.',
   rate_limited: 'Too many attempts. Please wait a minute and try again.',
   invalid: 'Enter a valid email address.',
+  server_error: 'Something went wrong. Please try again in a moment.',
 };
 
 type Step = 'email' | 'password';
@@ -34,8 +38,8 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [magicSent, setMagicSent] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, startTransition] = useTransition();
 
   const callbackError = useMemo(() => {
     if (!errorKey) return null;
@@ -58,18 +62,22 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
       return;
     }
 
+    setIsSubmitting(true);
     startTransition(async () => {
-      const result = await checkEmailAllowed(normalizedEmail);
-      if (!result.allowed) {
-        setError(checkErrorMessages[result.reason]);
-        return;
-      }
-      setEmail(normalizedEmail);
-      setHasPassword(result.hasPassword);
-      setStep('password');
-
-      if (!result.hasPassword) {
-        await sendMagicLink(normalizedEmail);
+      try {
+        const result = await checkEmailAllowed(normalizedEmail);
+        if (!result.allowed) {
+          setError(checkErrorMessages[result.reason]);
+          return;
+        }
+        setEmail(normalizedEmail);
+        setHasPassword(result.hasPassword);
+        setStep('password');
+        if (!result.hasPassword) {
+          await sendMagicLink(normalizedEmail);
+        }
+      } finally {
+        setIsSubmitting(false);
       }
     });
   }
@@ -87,7 +95,8 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
         options: { emailRedirectTo },
       });
       if (otpError) {
-        setError(otpError.message);
+        console.error('[login] signInWithOtp failed', otpError);
+        setError("We couldn't send the magic link. Please try again in a moment.");
         return;
       }
       setMagicSent(true);
@@ -104,27 +113,21 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
   async function handlePasswordSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
     resetMessages();
-
     if (!password) {
       setError('Enter your password.');
       return;
     }
-
     setIsSubmitting(true);
-    try {
-      const supabase = createClient();
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (signInError || !data.session) {
-        setError('Incorrect password. Try again or use a magic link.');
-        return;
-      }
-      window.location.href = '/dashboard';
-    } finally {
-      setIsSubmitting(false);
+    const formData = new FormData();
+    formData.set('email', email);
+    formData.set('password', password);
+    const result = await signInRedirect(formData);
+    setIsSubmitting(false);
+    if (result?.error) {
+      setError(result.error);
     }
+    // On success, signInRedirect calls Next's redirect() which throws —
+    // navigation happens server-side, this code never reaches the next line.
   }
 
   return (
@@ -145,7 +148,7 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
           </h1>
           <p className="text-sm leading-6 text-clinical-slate/70 sm:text-base">
             {step === 'email'
-              ? "Enter the email connected to your admin or trainer account."
+              ? 'Enter the email connected to your admin or trainer account.'
               : hasPassword
                 ? `Signing in as ${email}.`
                 : `We've sent a magic link to ${email}. Open it on this device to finish setting up your account.`}
@@ -171,16 +174,16 @@ export default function LoginForm({ errorKey }: LoginFormProps) {
                 }}
                 placeholder="you@example.com"
                 className="w-full rounded-2xl border border-clinical-slate/15 bg-surface px-4 py-3 text-base text-clinical-slate outline-none transition placeholder:text-clinical-slate/40 focus:border-hyrox-orange focus:ring-4 focus:ring-hyrox-orange/15"
-                disabled={isPending}
+                disabled={isSubmitting}
                 required
               />
             </div>
             <button
               type="submit"
-              disabled={isPending}
+              disabled={isSubmitting}
               className="inline-flex w-full items-center justify-center rounded-2xl bg-hyrox-orange px-4 py-3 font-semibold text-white transition hover:bg-[#e64a19] disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {isPending ? 'Checking…' : 'Continue'}
+              {isSubmitting ? 'Checking…' : 'Continue'}
             </button>
           </form>
         ) : (

@@ -6,14 +6,9 @@ import { getUserRole } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
 import { PASSWORD_HINT, PASSWORD_REGEX } from './password-policy';
+import { safeNext } from './safe-next';
 
 export type SetPasswordResult = { error?: string };
-
-function safeNext(rawNext: string | null | undefined, fallback: string): string {
-  if (!rawNext) return fallback;
-  if (!/^\/[A-Za-z0-9_\-/]*$/.test(rawNext)) return fallback;
-  return rawNext;
-}
 
 export async function setPassword(formData: FormData): Promise<SetPasswordResult> {
   const password = String(formData.get('password') ?? '');
@@ -37,7 +32,14 @@ export async function setPassword(formData: FormData): Promise<SetPasswordResult
     redirect('/login?error=auth_callback_failed');
   }
 
-  const role = await getUserRole(user.email);
+  let role: Awaited<ReturnType<typeof getUserRole>>;
+  try {
+    role = await getUserRole(user.email);
+  } catch (err) {
+    console.error('[set-password] getUserRole failed', { email: user.email, err });
+    redirect('/login?error=auth_callback_failed');
+  }
+
   if (role === 'suspended') {
     await supabase.auth.signOut();
     redirect('/login?error=suspended');
@@ -49,7 +51,8 @@ export async function setPassword(formData: FormData): Promise<SetPasswordResult
 
   const { error: updateError } = await supabase.auth.updateUser({ password });
   if (updateError) {
-    return { error: updateError.message };
+    console.error('[set-password] updateUser failed', { uid: user.id, message: updateError.message });
+    return { error: "We couldn't save that password. Try a different one or contact support." };
   }
 
   redirect(next);

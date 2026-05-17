@@ -58,8 +58,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/account/set-password?next=${encodeURIComponent(next)}`, request.url));
   }
 
-  const { data: hasPwd } = await supabase.rpc('user_has_password', { uid: user.id });
-  if (hasPwd !== true) {
+  const { data: hasPwd, error: rpcError } = await supabase.rpc('user_has_password', { uid: user.id });
+  if (rpcError) {
+    console.error('[auth/callback] user_has_password rpc failed', {
+      uid: user.id,
+      code: rpcError.code,
+      message: rpcError.message,
+    });
+    return NextResponse.redirect(getLoginUrl(request, 'auth_callback_failed'));
+  }
+
+  // hasPwd is strictly true | false here. `=== false` ensures any future
+  // ternary value doesn't silently fold into the reset branch (Wave-7
+  // taught us the cost of treating "unknown" as a happy-path signal).
+  if (hasPwd === false) {
     return NextResponse.redirect(new URL(`/account/set-password?next=${encodeURIComponent(next)}`, request.url));
   }
 

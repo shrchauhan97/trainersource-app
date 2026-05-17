@@ -1,11 +1,16 @@
 'use server';
 
+import { after } from 'next/server';
+
 import { newTrainerApplicationEmail, sendEmail } from '@/lib/email';
 import { createServiceClient } from '@/lib/supabase/service';
 import { COMMISSION_FIRST_SALE, COMMISSION_REORDER, MAX_CLIENTS_DEFAULT } from '@/lib/constants';
 
 // Fire-and-forget admin fan-out. Failures must never break /apply — the
-// application row is the source of truth; email is a courtesy ping.
+// application row is the source of truth; email is a courtesy ping. We
+// schedule via next/server `after()` so the runtime keeps the lambda
+// alive until the sends resolve (a plain `void notifyAdmins(...)` after
+// the action returns can be cut off when Vercel freezes the instance).
 async function notifyAdminsOfApplication(payload: {
   trainerName: string;
   trainerEmail: string;
@@ -21,15 +26,39 @@ async function notifyAdminsOfApplication(payload: {
       console.error('[apply] could not load admin list', error);
       return;
     }
-    if (!admins?.length) return;
+    if (!admins?.length) {
+      console.warn('[apply] no admins to notify of new application');
+      return;
+    }
+
+    const recipients = admins
+      .map((a) => (a.email as string | null)?.trim())
+      .filter((addr): addr is string => Boolean(addr));
+    if (recipients.length === 0) {
+      console.warn('[apply] admins table has rows but no usable email column');
+      return;
+    }
 
     const { subject, html } = newTrainerApplicationEmail(payload);
-    await Promise.allSettled(
-      admins
-        .map((a) => (a.email as string | null)?.trim())
-        .filter((addr): addr is string => Boolean(addr))
-        .map((to) => sendEmail({ to, subject, html }))
+    const results = await Promise.allSettled(
+      recipients.map((to) => sendEmail({ to, subject, html }))
     );
+    const succeeded = results.filter(
+      (r) => r.status === 'fulfilled' && r.value.ok
+    ).length;
+    const failed = results.length - succeeded;
+    if (failed > 0) {
+      console.error('[apply] admin notification fan-out partial failure', {
+        succeeded,
+        failed,
+        total: results.length,
+        details: results
+          .map((r, i) => (r.status === 'rejected' ? { recipient: recipients[i], reason: String(r.reason) } : r.status === 'fulfilled' && !r.value.ok ? { recipient: recipients[i], reason: r.value.error } : null))
+          .filter(Boolean),
+      });
+    } else {
+      console.info('[apply] admin notification fan-out delivered', { count: succeeded });
+    }
   } catch (err) {
     console.error('[apply] notifyAdminsOfApplication threw', err);
   }
@@ -139,14 +168,16 @@ export async function submitApplication(formData: FormData) {
     return { error: friendlyDbError(error) };
   }
 
-  void notifyAdminsOfApplication({
-    trainerName: name,
-    trainerEmail: email,
-    city,
-    country,
-    niche: niche || null,
-    socialMedia: social_media || null,
-  });
+  after(() =>
+    notifyAdminsOfApplication({
+      trainerName: name,
+      trainerEmail: email,
+      city,
+      country,
+      niche: niche || null,
+      socialMedia: social_media || null,
+    })
+  );
 
   return { success: true, data };
 }
