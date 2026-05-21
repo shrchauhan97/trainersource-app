@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -172,14 +172,14 @@ function LauncherInner() {
   const router = useRouter();
   const params = useSearchParams();
   const app = params.get('app');
-  const [status, setStatus] = useState<'routing' | 'menu' | 'unavailable'>(
-    'routing',
-  );
+  // `status` is fully derivable from the `?app=` query param — if it's a valid
+  // app slug we render a "Loading…" splash while the effect below performs the
+  // redirect; otherwise we render the menu. Computing this in render (rather
+  // than via setState inside the effect) avoids a render → effect → setState →
+  // re-render cascade flagged by react-hooks/set-state-in-effect.
+  const status: 'routing' | 'menu' = isValidApp(app) ? 'routing' : 'menu';
   useEffect(() => {
-    if (!isValidApp(app)) {
-      setStatus('menu');
-      return;
-    }
+    if (!isValidApp(app)) return;
     const extra = new URLSearchParams(params.toString());
     extra.delete('app');
     const qs = extra.toString();
@@ -221,16 +221,10 @@ function LauncherInner() {
     );
   }
 
-  if (status === 'unavailable') {
-    return (
-      <main className="mx-auto max-w-md px-5 py-10 text-center">
-        <h1 className="text-lg font-semibold text-[#e6c875]">Coming soon</h1>
-        <p className="mt-2 text-sm text-[#94a3b8]">
-          This Mini App is still under construction. Check back shortly.
-        </p>
-      </main>
-    );
-  }
+  // Note: the previous version of this component also had an 'unavailable'
+  // status branch here, but `setStatus` was never called with that value, so
+  // it was already dead. Removing it is required after collapsing `status`
+  // to a derived render-time expression — TS now correctly narrows it away.
 
   return (
     <main className="mx-auto max-w-md px-5 pb-10 pt-7">
