@@ -42,8 +42,22 @@ type UiState =
   | { kind: 'auth-error' }
   | { kind: 'server-error'; message: string };
 
+// Resolve the initial UI state synchronously at mount: if Telegram never
+// injected initData we already know we're in auth-error and don't want to
+// flash a loading skeleton, but doing that via setState inside an effect
+// triggers a cascading render (react-hooks/set-state-in-effect). The lazy
+// useState initializer below runs once on the client and gives us the right
+// starting state without an extra render pass. SSR returns 'loading' because
+// `window` is undefined; the client then re-evaluates on mount.
+function initialUiState(): UiState {
+  if (typeof window === 'undefined') return { kind: 'loading' };
+  const initData = (window.Telegram?.WebApp as ReorderTelegramWebApp | undefined)
+    ?.initData;
+  return initData ? { kind: 'loading' } : { kind: 'auth-error' };
+}
+
 export default function ReorderPage() {
-  const [state, setState] = useState<UiState>({ kind: 'loading' });
+  const [state, setState] = useState<UiState>(initialUiState);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [checkingOut, setCheckingOut] = useState(false);
 
@@ -55,14 +69,14 @@ export default function ReorderPage() {
     tg.expand();
   }, []);
 
-  // Fetch orders
+  // Fetch orders. We only reach the fetch branch when initData was present at
+  // mount (initial state is 'loading'); the auth-error case has already been
+  // resolved by the lazy useState initializer above, so there's no synchronous
+  // setState here that would trigger a cascading render.
   useEffect(() => {
     const tg = getTg();
     const initData = tg?.initData ?? '';
-    if (!initData) {
-      setState({ kind: 'auth-error' });
-      return;
-    }
+    if (!initData) return;
     fetch('/api/reorder/orders', {
       headers: { 'X-Telegram-Init-Data': initData },
     })
