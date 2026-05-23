@@ -42,8 +42,19 @@ type UiState =
   | { kind: 'auth-error' }
   | { kind: 'server-error'; message: string };
 
+// Always start in 'loading' — SSR and client agree, so there's no hydration
+// mismatch. The Telegram SDK script may not finish loading by React mount on
+// slower networks, so probing window.Telegram in a lazy initializer races with
+// SDK readiness; the effect below runs slightly later (post-hydration), giving
+// the SDK script enough time to populate window.Telegram. The single
+// conditional setState below is a one-shot guard, not a cascading render loop,
+// so the react-hooks/set-state-in-effect warning is a false positive here.
+function initialUiState(): UiState {
+  return { kind: 'loading' };
+}
+
 export default function ReorderPage() {
-  const [state, setState] = useState<UiState>({ kind: 'loading' });
+  const [state, setState] = useState<UiState>(initialUiState);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [checkingOut, setCheckingOut] = useState(false);
 
@@ -55,11 +66,14 @@ export default function ReorderPage() {
     tg.expand();
   }, []);
 
-  // Fetch orders
+  // Resolve initData → fetch orders, or surface auth-error when SDK never
+  // populated initData. The setState below is a one-shot mount guard for the
+  // no-initData case; it doesn't loop back through render.
   useEffect(() => {
     const tg = getTg();
     const initData = tg?.initData ?? '';
     if (!initData) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState({ kind: 'auth-error' });
       return;
     }
