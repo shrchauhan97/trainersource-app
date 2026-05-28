@@ -305,14 +305,25 @@ export async function POST(request: Request) {
     // We no longer pre-check whether the order already exists — the RPC
     // `ingest_bc_order_and_commission` does that atomically via ON CONFLICT
     // (see supabase/migrations/2026-05-14-bc-webhook-idempotency.sql). We
-    // still fetch the trainer row + previous-orders count in parallel so we
-    // can compute the commission payload BEFORE handing both writes to the
-    // RPC (the RPC needs a numeric amount; it does not call
+    // still fetch the trainer row + previous-settled-orders count in parallel
+    // so we can compute the commission payload BEFORE handing both writes to
+    // the RPC (the RPC needs a numeric amount; it does not call
     // calculateCommission itself).
+    //
+    // First-sale detection must count only PRIOR SETTLED orders, not every
+    // order row. A customer's very first order frequently lands in a
+    // non-settled status (ACH / "awaiting payment" → `pending`), which still
+    // creates an `orders` row but no commission. If we counted that pending
+    // row, the customer's next — actually first commissionable — order would
+    // be misclassified as a `reorder` (10%) instead of `first_sale` (20%),
+    // permanently underpaying the trainer. Counting only settled prior orders
+    // (paid / shipped / delivered) mirrors exactly the set that produced a
+    // commission, so the first commissionable order is correctly first_sale.
     const previousOrdersQuery = supabase
       .from('orders')
       .select('id', { count: 'exact', head: true })
-      .eq('customer_id', customer.id);
+      .eq('customer_id', customer.id)
+      .in('status', ['paid', 'shipped', 'delivered']);
 
     const trainerQuery = trainerId
       ? supabase.from('trainers').select('*').eq('id', trainerId).maybeSingle<Trainer>()
@@ -351,6 +362,8 @@ export async function POST(request: Request) {
       normalizedStatus === 'shipped' ||
       normalizedStatus === 'delivered';
 
+    // No prior settled order for this customer → this is their first
+    // commissionable purchase, so the higher first-sale rate applies.
     const isFirstSale = (previousOrdersResult.count ?? 0) === 0;
 
     // Compute the commission payload up-front so the RPC sees both writes in

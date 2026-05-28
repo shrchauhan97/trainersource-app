@@ -75,8 +75,13 @@ function setupFromHandlers(handlers: Record<string, () => unknown>) {
 }
 
 // Default `from()` chain used by happy-path tests: customer lookup by BC id,
-// previous-orders count returning 0, trainer lookup returning TRAINER.
-function defaultFromHandlers() {
+// previous-settled-orders count returning `priorSettledOrders`, trainer lookup
+// returning TRAINER.
+//
+// The route counts prior SETTLED orders via
+// `.from('orders').select('id', {head}).eq('customer_id', …).in('status', […])`,
+// so the orders mock must terminate the chain on `.in(...)`, not `.eq(...)`.
+function defaultFromHandlers(priorSettledOrders = 0) {
   return {
     customers: () => ({
       select: vi.fn().mockReturnThis(),
@@ -89,7 +94,9 @@ function defaultFromHandlers() {
     }),
     orders: () => ({
       select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockResolvedValue({ count: 0, error: null }),
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({ count: priorSettledOrders, error: null }),
+        }),
       }),
     }),
     trainers: () => ({
@@ -322,6 +329,77 @@ describe('POST /api/webhooks/bigcommerce — atomicity + idempotency', () => {
     expect(body.error).toBe('ingest_failed');
     expect(body.reason).toBe('server_error');
     expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
+  it('reorder: a prior SETTLED order for the customer → reorder rate (10%)', async () => {
+    // Customer already has one settled order → this purchase is a reorder.
+    setupFromHandlers(defaultFromHandlers(1));
+    supabaseRpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          ok: true,
+          was_new: true,
+          reason: null,
+          order_id: 'order-uuid-2',
+          commission_id: 'commission-uuid-2',
+        },
+      ],
+      error: null,
+    });
+
+    const { POST } = await import('@/app/api/webhooks/bigcommerce/route');
+    const res = await POST(
+      buildRequest({ scope: 'store/order/created', data: { id: 2002, customer_id: 42 } }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(supabaseRpcMock).toHaveBeenCalledWith(
+      'ingest_bc_order_and_commission',
+      expect.objectContaining({
+        p_commission_type: 'reorder',
+        p_commission_rate: 0.1,
+        // 10% of $150 = $15.00
+        p_commission_amount: 15,
+      }),
+    );
+  });
+
+  it('first sale: prior PENDING-only orders (zero settled) still count as first_sale (20%)', async () => {
+    // Regression for first-sale misclassification: an ACH / "awaiting payment"
+    // first order creates a `pending` orders row but NO commission. The
+    // customer's first commissionable order must still be classified as
+    // first_sale — counting that pending row would wrongly demote it to a
+    // reorder and underpay the trainer. The route counts only SETTLED prior
+    // orders, so the settled count here is 0.
+    setupFromHandlers(defaultFromHandlers(0));
+    supabaseRpcMock.mockResolvedValueOnce({
+      data: [
+        {
+          ok: true,
+          was_new: true,
+          reason: null,
+          order_id: 'order-uuid-3',
+          commission_id: 'commission-uuid-3',
+        },
+      ],
+      error: null,
+    });
+
+    const { POST } = await import('@/app/api/webhooks/bigcommerce/route');
+    const res = await POST(
+      buildRequest({ scope: 'store/order/created', data: { id: 3003, customer_id: 42 } }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(supabaseRpcMock).toHaveBeenCalledWith(
+      'ingest_bc_order_and_commission',
+      expect.objectContaining({
+        p_commission_type: 'first_sale',
+        p_commission_rate: 0.2,
+        // 20% of $150 = $30.00
+        p_commission_amount: 30,
+      }),
+    );
   });
 
   it('non-actionable status (cancelled): skips RPC entirely', async () => {
