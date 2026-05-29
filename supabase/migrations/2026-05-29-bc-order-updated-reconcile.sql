@@ -42,7 +42,7 @@ create or replace function public.reconcile_bc_order_and_commission(
   order_id uuid,
   commission_id uuid
 ) language plpgsql security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_order_id uuid;
@@ -60,13 +60,13 @@ begin
       bigcommerce_order_id, customer_id, trainer_id, total, status,
       payment_method, country, city, placed_at, updated_at
     ) values (
-      p_bigcommerce_order_id, p_customer_id, p_trainer_id, p_total, p_status,
+      p_bigcommerce_order_id, p_customer_id, p_trainer_id, p_total, p_status::order_status,
       p_payment_method, p_country, p_city, p_placed_at, p_updated_at
     )
     returning id into v_order_id;
   else
     update public.orders
-      set status = p_status,
+      set status = p_status::order_status,
           total = p_total,
           country = coalesce(p_country, country),
           city = coalesce(p_city, city),
@@ -87,7 +87,7 @@ begin
       insert into public.commissions (
         trainer_id, order_id, commission_type, rate_snapshot, amount, status
       ) values (
-        p_trainer_id, v_order_id, p_commission_type, p_commission_rate, p_commission_amount, 'pending'
+        p_trainer_id, v_order_id, p_commission_type::commission_type, p_commission_rate, p_commission_amount, 'pending'
       )
       returning id into v_commission_id;
 
